@@ -121,4 +121,4 @@ This tool is for educational and security research purposes only. Use it to audi
 
 ![License](https://img.shields.io/badge/License-GNU-blue?style=for-the-badge&logo=open-source-initiative&logoColor=white)
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the GNU LESSER GENERAL PUBLIC License. See `LICENSE` for more information.
