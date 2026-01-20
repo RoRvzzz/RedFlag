@@ -3,9 +3,9 @@
 # RedFlag 
 
 ![Python Version](https://img.shields.io/badge/python-3.12%2B-red)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-MIT-red)
 ![Status](https://img.shields.io/badge/status-active-success)
-![Rich Support](https://img.shields.io/badge/UI-Rich-purple)
+![Rich Support](https://img.shields.io/badge/UI-Rich-red)
 
 **RedFlag** is a static analysis tool designed to inspect C++ projects, Visual Studio solutions, and build systems for risky behaviors.
 
