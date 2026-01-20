@@ -80,6 +80,9 @@ RedFlag performs analysis in 5 steps:
 5.  **Verdict:** Calculates a total threat score and provides a final verdict (CLEAN to CRITICAL).
 
 ##  Screenshots
+<p align="center">
+  <img src="redflag/RedFlag.png" alt="RedFlag Logo" width="500">
+</p>
 
 
 ## Disclaimer
