@@ -2,7 +2,7 @@
 
 # RedFlag 
 
-![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
+![Python Version](https://img.shields.io/badge/python-3.12%2B-red)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-active-success)
 ![Rich Support](https://img.shields.io/badge/UI-Rich-purple)
