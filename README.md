@@ -56,7 +56,7 @@ You need **Python 3** installed on your machine.
    pip install rich
    ```
 
-## 💻 How to Use
+##  How to Use
 
 You can run RedFlag against a single file or an entire directory (like a Visual Studio project folder).
 
@@ -79,9 +79,9 @@ RedFlag performs analysis in 5 steps:
 4.  **Correlation:** Increases the risk score if multiple dangerous categories (e.g., Crypto + Network) appear in the same file.
 5.  **Verdict:** Calculates a total threat score and provides a final verdict (CLEAN to CRITICAL).
 
-## 📸 Screenshots
+##  Screenshots
 
-*(Example output representation)*
+
 
 ```text
 VERDICT: HIGH (Score: 18)
