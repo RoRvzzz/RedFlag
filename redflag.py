@@ -70,6 +70,8 @@ class RedFlagScanner:
         self.project_type = "Unknown"
         self.suspicious_build_events = []
         
+
+        
         # Configuration
         self.ignore_dirs = {
             '.git', '.svn', '.vs', '.vscode', '.idea',
