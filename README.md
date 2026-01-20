@@ -9,7 +9,7 @@
 
 **RedFlag** is a static analysis tool designed to inspect C++ projects, Visual Studio solutions, and build systems for risky behaviors.
 
-Unlike standard linters that look for syntax errors, RedFlag scans source code and build events for execution anomalies, obfuscation, crypto misuse, and hidden payloads. It correlates these signals to provide a transparent risk score, helping security researchers and developers identify potential malware or malicious code injection in third-party projects.
+Unlike standard linters that look for syntax errors, RedFlag scans source code and build events for execution anomalies, obfuscation, crypto misuse, and hidden payloads. It correlates these signals to provide a transparent risk score, helping ~~security researchers and developers~~ pasters identify potential malware or malicious code injection in third-party projects.
 
 ##  Table of Contents
 - [Why RedFlag?](#why-redflag)
@@ -81,26 +81,6 @@ RedFlag performs analysis in 5 steps:
 
 ##  Screenshots
 
-
-
-```text
-VERDICT: HIGH (Score: 18)
-
-Top Findings:
- • CRITICAL  src/utils.cpp:45 - Remote Thread Injection
-   CreateRemoteThread(hProcess, NULL, 0, ...
- • HIGH      project.vcxproj:0 - Suspicious Build Event (PowerShell Execution)
-   powershell.exe -enc aWZyYW1l...
-```
-
-## 🤝 Contributing
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-1.  Fork the Project
-2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the Branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
 
 ## Disclaimer
 This tool is for educational and security research purposes only. Use it to audit your own code or code you have permission to analyze. The authors are not responsible for any misuse of this tool.
