@@ -64,7 +64,7 @@ You need **Python 3** installed on your machine.
 
 **1. Clone the repository:**
 ```bash
-git clone https://github.com/yourusername/redflag.git
+git clone https://github.com/rorvzzz/redflag.git
 cd redflag
 ```
 
