@@ -1,11 +1,10 @@
-"""
-Cog: Source Code Analysis
-"""
+
 import os
 import binascii
+import re
 from ..core.config import IGNORE_DIRS, IGNORE_FILES, SKIP_EXTS, BASE64_REGEX
 from ..core.models import Finding
-from ..core.utils import UI, calculate_entropy, get_severity
+from ..core.utils import UI, calculate_entropy, get_severity, xor_brute
 
 class CodeScanCog:
     def __init__(self, scanner):
@@ -55,7 +54,7 @@ class CodeScanCog:
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
-            # 1. Regex Scan
+            # regex scan
             for cat, patterns in self.scanner.compiled_patterns.items():
                 for pat, score, desc in patterns:
                     for match in pat.finditer(content):
@@ -72,8 +71,12 @@ class CodeScanCog:
                             severity=get_severity(score)
                         ))
 
-            # 2. Entropy / Base64 Scan
+            # base64 scan
             self._scan_blobs(content, rel_path)
+            
+            # XOR brute force on suspicious byte arrays or strings
+            # Simple heuristic: scan "suspiciously long" continuous strings that aren't base64
+            self._scan_xor(content, rel_path)
 
         except Exception:
             pass
@@ -95,7 +98,7 @@ class CodeScanCog:
                     score += 2
                     notes.append(f"High Entropy ({entropy:.2f})")
                 
-                # Check keywords in decoded
+                # check keywords in decoded
                 for cat, patterns in self.scanner.compiled_patterns.items():
                     for pat, s, d in patterns:
                         if pat.search(decoded_str):
@@ -120,3 +123,46 @@ class CodeScanCog:
 
             except Exception:
                 pass
+
+    def _scan_xor(self, content, rel_path):
+        # Look for potential byte arrays or obfuscated strings
+        # Heuristic: long hex strings or byte array initializers
+        
+        # 1. Hex strings like "4d5a9000..."
+        hex_blobs = re.findall(r'(?:0x[0-9a-fA-F]{2},\s*){10,}', content)
+        # 2. String literals that look random/long
+        long_strs = re.findall(r'"([^"]{50,})"', content)
+        
+        candidates = []
+        
+        # Parse hex blobs
+        for blob in hex_blobs:
+            try:
+                # Cleanup: "0x41, 0x42" -> b'AB'
+                clean = blob.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '')
+                candidates.append(binascii.unhexlify(clean))
+            except:
+                pass
+                
+        # Candidates from strings
+        for s in long_strs:
+            candidates.append(s)
+            
+        for candidate in candidates:
+            # Try XOR brute
+            results = xor_brute(candidate)
+            for key, decoded_text in results:
+                # Check if decoded text has anything interesting
+                for cat, patterns in self.scanner.compiled_patterns.items():
+                    for pat, s, d in patterns:
+                        if pat.search(decoded_text):
+                            self.scanner.add_finding(Finding(
+                                category="OBFUSCATION",
+                                description=f"XOR Obfuscated Content (Key: {hex(key)}) - Contains {d}",
+                                file=rel_path,
+                                line=0, # Hard to track line for complex extractions
+                                context=decoded_text[:100] + "...",
+                                score=5,
+                                severity="HIGH"
+                            ))
+                            return # Found a match, stop checking this candidate

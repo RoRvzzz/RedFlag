@@ -71,9 +71,56 @@ PATTERNS = {
         (r'FromBase64String', 3, 'Base64 Decoding'),
         (r'-enc\s+', 4, 'PowerShell Encoded Command'),
         (r'IsDebuggerPresent', 3, 'Anti-Debugging Check'),
+        (r'(char|byte|uint8_t)\s+\w+\[\]\s*=\s*\{(\s*0x[0-9a-fA-F]{2}\s*,?)+\}', 4, 'Stack String / Shellcode Array'), # Stack string detection
     ]
 }
 
 # Pre-compiled patterns will be generated in scanner init, or lazily here?
 # Let's keep config purely data for now.
 BASE64_REGEX = re.compile(r'(?:[A-Za-z0-9+/]{4}){20,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?')
+
+# Default YARA Rules
+DEFAULT_YARA_RULES = """
+rule Suspicious_Powershell {
+    meta:
+        description = "Detects suspicious PowerShell commands"
+        severity = "HIGH"
+    strings:
+        $s1 = "powershell" nocase
+        $s2 = "-enc" nocase
+        $s3 = "IEX" nocase
+        $s4 = "Invoke-Expression" nocase
+    condition:
+        $s1 and ($s2 or $s3 or $s4)
+}
+
+rule PE_Header_In_Source {
+    meta:
+        description = "Detects embedded PE header in source code (shellcode/dropper)"
+        severity = "CRITICAL"
+    strings:
+        $mz = { 4D 5A }
+    condition:
+        $mz at 0 or (
+            // Look for byte array version commonly found in C/C++ arrays
+            // 0x4D, 0x5A or 0x5A, 0x4D depending on endianness in source
+            $mz
+        )
+}
+
+rule Suspicious_API_Combinations {
+    meta:
+        description = "Detects combinations of APIs often used for injection"
+        severity = "HIGH"
+    strings:
+        $valloc = "VirtualAlloc" fullword ascii wide
+        $wpm = "WriteProcessMemory" fullword ascii wide
+        $crt = "CreateRemoteThread" fullword ascii wide
+        $ct = "CreateThread" fullword ascii wide
+        $ll = "LoadLibrary" fullword ascii wide
+        $gp = "GetProcAddress" fullword ascii wide
+    condition:
+        ($valloc and $wpm and ($crt or $ct)) or
+        ($ll and $gp)
+}
+"""

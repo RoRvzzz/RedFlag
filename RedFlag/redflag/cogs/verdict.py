@@ -1,6 +1,4 @@
-"""
-Cog: Verdict Generation and Reporting
-"""
+
 import time
 from collections import defaultdict
 from ..core.models import Finding
@@ -76,7 +74,7 @@ class VerdictCog:
                 if count >= 10: break
                 
                 s_color = color_map.get(f.severity, "white")
-                # Using rich formatting
+                # handle rich style string
                 if ']' in s_color: # Handle rich style string
                      UI.log(f" • [{s_color}]{f.severity:8}[/{s_color}] {f.file}:{f.line} - [bold]{f.description}[/bold]")
                 else:

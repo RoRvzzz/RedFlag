@@ -33,12 +33,14 @@ class RedFlagScanner:
         from ..cogs.project_id import ProjectIdentityCog
         from ..cogs.build_scan import BuildScanCog
         from ..cogs.code_scan import CodeScanCog
+        from ..cogs.yara_scan import YaraScanCog
         from ..cogs.verdict import VerdictCog
 
         cogs = [
             ProjectIdentityCog(self),
             BuildScanCog(self),
             CodeScanCog(self),
+            YaraScanCog(self),
             VerdictCog(self)
         ]
 
