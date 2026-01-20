@@ -81,7 +81,7 @@ RedFlag performs analysis in 5 steps:
 
 ##  Screenshots
 <p align="center">
-  <img src="redflag/RedFlag.png" alt="RedFlag Logo" width="500">
+  <img src="RedFlag/redflag/RedFlag.png" alt="RedFlag Logo" width="500">
 </p>
 
 
