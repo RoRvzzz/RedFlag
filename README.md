@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-FF0000?style=for-the-badge&logo=open-source-initiative&logoColor=white)
 ![Methodology](https://img.shields.io/badge/Methodology-Static_Analysis-FF0000?style=for-the-badge&logo=code-review&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge&logo=activity&logoColor=white)
-
+![Discord](https://img.shields.io/badge/Discord-FF0000?sytle=open-source-initiavtive&logoColor=blue)
 **RedFlag** is a static analysis tool designed to flag risky patterns in C++ projects, Visual Studio solutions, and build systems.
 
 Rather than claiming to "understand" code behavior, RedFlag acts as an advanced grep-tool that scans for **known dangerous signatures**, **suspicious API combinations**, and **obfuscation techniques**. It aggregates these static indicators into a weighted risk score, helping ~~developers and researchers~~ pasters quickly identify "Red Flags" in third-party code that warrant manual review.
