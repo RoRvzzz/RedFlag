@@ -6,7 +6,8 @@
 ![Methodology](https://img.shields.io/badge/Methodology-Static_Analysis-FF0000?style=for-the-badge&logo=code-review&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge&logo=activity&logoColor=white)
 
-![Discord](https://img.shields.io/badge/Discord-FF0000?style=for-the-badge&logo=open-source-initiative&logoColor=white)
+[![Discord](https://img.shields.io/badge/Discord-FF0000?style=for-the-badge&logo=open-source-initiative&logoColor=white)](https://discord.gg/macrostack)
+
 
 **RedFlag** is a static analysis tool designed to flag risky patterns in C++ projects, Visual Studio solutions, and build systems.
 
