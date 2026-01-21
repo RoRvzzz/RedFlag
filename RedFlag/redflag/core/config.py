@@ -21,11 +21,15 @@ IGNORE_DIRS = {
     '.git', '.svn', '.vs', '.vscode', '.idea',
     'build', 'out', 'bin', 'obj', 'node_modules', '__pycache__',
     'artifacts', 'dist', 'target', 'vendor', 'ext', 'external',
-    'x64', 'x86', 'debug', 'release'
+    'x64', 'x86', 'debug', 'release',
+    'libs', 'imgui', 'include'
 }
 
 # Files to never scan (the tool itself)
-IGNORE_FILES = {'redflag.py', 'check.py', 'checker.py', 'main.py', '__init__.py'}
+IGNORE_FILES = {
+    'redflag.py', 'check.py', 'checker.py', 'main.py', '__init__.py', 
+    'fonts.h', 'prot.hxx', 'obfusheader.h', 'VMProtectSDK.h', 'vmprotect.h'
+}
 
 # Extensions to skip (binaries, images, etc.)
 SKIP_EXTS = {
@@ -40,14 +44,15 @@ PATTERNS = {
     'EXECUTION': [
         (r'cmd\.exe', 3, 'Command Prompt Execution'),
         (r'powershell', 4, 'PowerShell Execution'),
-        (r'ShellExecute', 3, 'API Shell Execution'),
+        (r'ShellExecute(A|W)?\s*\(\s*.*?\b(http|https|explorer)\b', 1, 'Safe Shell Execution (URL/Explorer)'), # Lower score for common UI actions
+        (r'ShellExecute(A|W)?(?!\s*\(\s*.*?\b(http|https|explorer)\b)', 3, 'API Shell Execution'),
+        (r'\bsystem\((?!"cls"|"pause").*?\)', 3, 'System Command'), # Ignore cls and pause
         (r'CreateProcess', 3, 'API Process Creation'),
-        (r'system\(', 3, 'System Command'),
         (r'WinExec', 3, 'Legacy Execution API'),
     ],
     'MEMORY': [
-        (r'VirtualAlloc', 4, 'Memory Allocation (RWX Potential)'),
-        (r'WriteProcessMemory', 5, 'Process Memory Injection'),
+        #(r'VirtualAlloc', 4, 'Memory Allocation (RWX Potential)'),
+        #(r'WriteProcessMemory', 5, 'Process Memory Injection'),
         (r'CreateRemoteThread', 5, 'Remote Thread Injection'),
         (r'ReflectiveLoader', 5, 'Reflective DLL Injection Artifact'),
         (r'RtlMoveMemory', 2, 'Memory Manipulation'),
@@ -70,7 +75,7 @@ PATTERNS = {
     'OBFUSCATION': [
         (r'FromBase64String', 3, 'Base64 Decoding'),
         (r'-enc\s+', 4, 'PowerShell Encoded Command'),
-        (r'IsDebuggerPresent', 3, 'Anti-Debugging Check'),
+        #(r'IsDebuggerPresent', 3, 'Anti-Debugging Check'),
         (r'(char|byte|uint8_t)\s+\w+\[\]\s*=\s*\{(\s*0x[0-9a-fA-F]{2}\s*,?)+\}', 4, 'Stack String / Shellcode Array'), # Stack string detection
     ]
 }
@@ -80,7 +85,7 @@ PATTERNS = {
 BASE64_REGEX = re.compile(r'(?:[A-Za-z0-9+/]{4}){20,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?')
 
 # Default YARA Rules
-DEFAULT_YARA_RULES = """
+DEFAULT_YARA_RULES = r"""
 rule Suspicious_Powershell {
     meta:
         description = "Detects suspicious PowerShell commands"
@@ -99,13 +104,10 @@ rule PE_Header_In_Source {
         description = "Detects embedded PE header in source code (shellcode/dropper)"
         severity = "CRITICAL"
     strings:
-        $mz = { 4D 5A }
+        $mz_hdr = { 4D 5A }
+        $mz_hex = /0x4[dD],\s*0x5[aA]/
     condition:
-        $mz at 0 or (
-            // Look for byte array version commonly found in C/C++ arrays
-            // 0x4D, 0x5A or 0x5A, 0x4D depending on endianness in source
-            $mz
-        )
+        $mz_hdr at 0 or $mz_hex
 }
 
 rule Suspicious_API_Combinations {

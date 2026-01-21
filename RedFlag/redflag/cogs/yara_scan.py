@@ -47,7 +47,7 @@ class YaraScanCog:
             for root, dirs, files in os.walk(self.scanner.target_dir):
                 dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
                 for f in files:
-                    if f in IGNORE_FILES: continue
+                    if f.lower() in [x.lower() for x in IGNORE_FILES]: continue
                     if not any(f.lower().endswith(x) for x in SKIP_EXTS):
                         files_to_scan.append(os.path.join(root, f))
 
