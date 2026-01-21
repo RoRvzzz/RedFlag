@@ -26,7 +26,7 @@ class CodeScanCog:
                 dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
                 
                 for f in files:
-                    if f in IGNORE_FILES: continue
+                    if f.lower() in [x.lower() for x in IGNORE_FILES]: continue
                     if not any(f.lower().endswith(x) for x in SKIP_EXTS):
                         files_to_scan.append(os.path.join(root, f))
         
@@ -61,6 +61,25 @@ class CodeScanCog:
                         line_no = content[:match.start()].count('\n') + 1
                         ctx = content[max(0, match.start()-50):min(len(content), match.end()+50)].replace('\n', ' ')
                         
+                        # Filter out benign stack strings (embedded assets)
+                        if cat == 'OBFUSCATION' and 'Stack String' in desc:
+                            if any(x in ctx.lower() for x in ['font', 'image', 'icon', 'bytes', 'data', 'texture']):
+                                # Likely an asset array, skip or downgrade
+                                continue
+                            if any(x in rel_path.lower() for x in ['font', 'image', 'icon', 'resource', 'asset', 'protect', 'crypto']):
+                                continue
+
+                        # Context-aware refinement for System Commands
+                        if cat == 'EXECUTION' and 'System Command' in desc:
+                            lower_ctx = ctx.lower()
+                            if 'firewall' in lower_ctx or 'netsh' in lower_ctx:
+                                desc = "System Command (Firewall/Network Config)"
+                                # Reduce score slightly as it's a known admin tool usage, but keep it visible
+                                score = 2
+                            elif 'ipconfig' in lower_ctx or 'ping' in lower_ctx:
+                                desc = "System Command (Network Info)"
+                                score = 1
+
                         self.scanner.add_finding(Finding(
                             category=cat,
                             description=desc,
@@ -125,34 +144,34 @@ class CodeScanCog:
                 pass
 
     def _scan_xor(self, content, rel_path):
-        # Look for potential byte arrays or obfuscated strings
-        # Heuristic: long hex strings or byte array initializers
+        # look for potential byte arrays or obfuscated strings
+        # heuristic: long hex strings or byte array initializers
         
-        # 1. Hex strings like "4d5a9000..."
+        # hex strings like "4d5a9000..."
         hex_blobs = re.findall(r'(?:0x[0-9a-fA-F]{2},\s*){10,}', content)
-        # 2. String literals that look random/long
+        # string literals that look random/long
         long_strs = re.findall(r'"([^"]{50,})"', content)
         
         candidates = []
         
-        # Parse hex blobs
+        # parse hex blobs
         for blob in hex_blobs:
             try:
-                # Cleanup: "0x41, 0x42" -> b'AB'
+                # cleanup: "0x41, 0x42" -> b'AB'
                 clean = blob.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '')
                 candidates.append(binascii.unhexlify(clean))
             except:
                 pass
                 
-        # Candidates from strings
+        # candidates from strings
         for s in long_strs:
             candidates.append(s)
             
         for candidate in candidates:
-            # Try XOR brute
+            # try xor brute force
             results = xor_brute(candidate)
             for key, decoded_text in results:
-                # Check if decoded text has anything interesting
+                # check if decoded text has anything interesting
                 for cat, patterns in self.scanner.compiled_patterns.items():
                     for pat, s, d in patterns:
                         if pat.search(decoded_text):
@@ -160,9 +179,9 @@ class CodeScanCog:
                                 category="OBFUSCATION",
                                 description=f"XOR Obfuscated Content (Key: {hex(key)}) - Contains {d}",
                                 file=rel_path,
-                                line=0, # Hard to track line for complex extractions
+                                line=0, # hard to track line for complex extractions
                                 context=decoded_text[:100] + "...",
                                 score=5,
                                 severity="HIGH"
                             ))
-                            return # Found a match, stop checking this candidate
+                            return # found a match, stop checking this candidate

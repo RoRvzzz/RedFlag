@@ -28,7 +28,8 @@ IGNORE_DIRS = {
 # Files to never scan (the tool itself)
 IGNORE_FILES = {
     'redflag.py', 'check.py', 'checker.py', 'main.py', '__init__.py', 
-    'fonts.h', 'prot.hxx', 'obfusheader.h', 'VMProtectSDK.h', 'vmprotect.h'
+    'fonts.h', 'prot.hxx', 'obfusheader.h', 'VMProtectSDK.h', 'vmprotect.h',
+    'gui.cpp', 'desync.cpp', 'configsystem.cpp'
 }
 
 # Extensions to skip (binaries, images, etc.)
@@ -44,8 +45,8 @@ PATTERNS = {
     'EXECUTION': [
         (r'cmd\.exe', 3, 'Command Prompt Execution'),
         (r'powershell', 4, 'PowerShell Execution'),
-        (r'ShellExecute(A|W)?\s*\(\s*.*?\b(http|https|explorer)\b', 1, 'Safe Shell Execution (URL/Explorer)'), # Lower score for common UI actions
-        (r'ShellExecute(A|W)?(?!\s*\(\s*.*?\b(http|https|explorer)\b)', 3, 'API Shell Execution'),
+        (r'ShellExecute(A|W)?\(.*?\b(http|https|explorer)\b', 1, 'Safe Shell Execution (URL/Explorer)'), # Lower score for common UI actions
+        (r'ShellExecute(A|W)?(?!\(.*?\b(http|https|explorer)\b)', 3, 'API Shell Execution'),
         (r'\bsystem\((?!"cls"|"pause").*?\)', 3, 'System Command'), # Ignore cls and pause
         (r'CreateProcess', 3, 'API Process Creation'),
         (r'WinExec', 3, 'Legacy Execution API'),
