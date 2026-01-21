@@ -13,16 +13,12 @@ class YaraScanCog:
 
     def run(self):
         if not YARA_AVAILABLE:
-            # Silent skip or info log? Info log is better.
-            # Only show once to avoid spamming if called multiple times (though engine runs once)
-            # Actually, engine runs cogs sequentially.
+            UI.log("  [yellow]YARA module not found. Skipping YARA scan.[/yellow]")
             return
 
         UI.log("\n[bold white]Step 3a: YARA Pattern Scanning...[/bold white]")
         
-        self._compile_rules()
-        if not self.rules:
-            UI.log("  [yellow]No YARA rules compiled.[/yellow]")
+        if not self._compile_rules():
             return
 
         self._scan_files()
@@ -30,16 +26,13 @@ class YaraScanCog:
     def _compile_rules(self):
         try:
             import yara
-            # Compile default rules
             sources = {'default': DEFAULT_YARA_RULES}
-            
-            # Optionally load external rules if 'rules' dir exists in project root
-            # (Not implemented yet, sticking to defaults for now)
-            
             self.rules = yara.compile(sources=sources)
             UI.log(f"  ✅ Compiled internal YARA rules")
+            return True
         except Exception as e:
             UI.log(f"  [red]Failed to compile YARA rules: {e}[/red]")
+            return False
 
     def _scan_files(self):
         files_to_scan = []
@@ -92,9 +85,8 @@ class YaraScanCog:
                     # Get matched strings for context
                     context = ""
                     if match.strings:
-                        # match.strings is a list of (offset, identifier, data)
-                        # data is bytes
                         try:
+                            # match.strings is a list of (offset, identifier, data)
                             context = f"Matched: {match.strings[0][2].decode('utf-8', errors='ignore')}"
                         except:
                             context = "Binary match"
@@ -103,10 +95,12 @@ class YaraScanCog:
                         category="YARA",
                         description=f"YARA Match: {desc}",
                         file=rel_path,
-                        line=0, # YARA doesn't give line numbers easily without parsing file
+                        line=0,
                         context=context,
                         score=score,
-                        severity=severity_str.upper()
+                        severity=severity_str.upper(),
+                        metadata={'rule': rule_name, 'meta': meta}
                     ))
-        except Exception:
+        except Exception as e:
+            # Just log verbose error if needed, don't crash
             pass

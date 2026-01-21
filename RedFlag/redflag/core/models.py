@@ -1,7 +1,8 @@
 """
 Data models
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List, Dict, Any
 
 @dataclass
 class Finding:
@@ -12,3 +13,5 @@ class Finding:
     context: str
     score: int
     severity: str  # LOW, MEDIUM, HIGH, CRITICAL
+    confidence: str = "MEDIUM" # LOW, MEDIUM, HIGH
+    metadata: Dict[str, Any] = field(default_factory=dict)
