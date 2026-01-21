@@ -28,7 +28,7 @@ Rather than claiming to "understand" code behavior, RedFlag acts as an advanced 
 
 ![Why RedFlag](https://img.shields.io/badge/01-Why_RedFlag%3F-b91c1c?style=for-the-badge&logo=help&logoColor=white)
 
-When cloning repositories or inheriting legacy C++ projects, manual auditing is time-consuming. A project might look clean in the `.cpp` files but execute a reverse shell via a `PostBuildEvent` in the `.vcxproj` file.
+When cloning repositories or inheriting legacy C++ projects, manual auditing is time-consuming. A project might look clean in the `.cpp` files but execute a reverse shell via a `PreBuildEvent` in the `.vcxproj` file.
 
 **RedFlag solves this by:**
 
