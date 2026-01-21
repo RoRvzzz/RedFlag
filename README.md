@@ -6,7 +6,7 @@
 ![UI](https://img.shields.io/badge/UI-Rich_CLI-FF0000?style=for-the-badge&logo=charm&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge&logo=activity&logoColor=white)
 
-**RedFlag** is a static analysis tool designed to inspect C++ projects, Visual Studio solutions, and build systems for risky behaviors.
+**RedFlag** is a static analysis tool designed to inspect C++ projects, Visual Studio solutions, and build systems for risky behaviors. (Currently this program isnt ready for its first release once all features are fleshed out and false postivies remove it will be good)
 
 Unlike standard linters that look for syntax errors, RedFlag scans source code and build events for execution anomalies, obfuscation, crypto misuse, and hidden payloads. It correlates these signals to provide a transparent risk score, helping ~~security researchers and developers~~ pasters identify potential malware or malicious code injection in third-party projects.
 
