@@ -114,10 +114,8 @@ RedFlag performs analysis in 5 steps:
   <img src="RedFlag/redflag/RedFlag.png" alt="RedFlag Logo" width="500">
 </p>
 
-<video width="1080" controls>
-  <source src="RedFlag/RedFlag.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+### See it in action!
+[Watch the RedFlag demo video here!](RedFlag/RedFlag.mp4)
 
 ---
 
