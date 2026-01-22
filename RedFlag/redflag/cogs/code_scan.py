@@ -11,7 +11,7 @@ class CodeScanCog:
         self.scanner = scanner
 
     def run(self):
-        UI.log("\n[bold white]Step 3: Deep Source Analysis...[/bold white]")
+        UI.log("\n[bold white]Step 3: Analyzing source code...[/bold white]")
         
         files_to_scan = []
         
@@ -31,7 +31,7 @@ class CodeScanCog:
                         files_to_scan.append(os.path.join(root, f))
         
         if not files_to_scan:
-            UI.log("  ℹ No suitable source files found to scan.")
+            UI.log("  [yellow]No suitable source files found to scan.[/yellow]")
             return
 
         progress = UI.get_progress()

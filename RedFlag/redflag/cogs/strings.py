@@ -11,7 +11,7 @@ class StringAnalysisCog:
         self.extractor = URLExtract()
 
     def run(self):
-        UI.log("\n[bold white]Step 3b: Advanced String Analysis (URLs & IPs)...[/bold white]")
+        UI.log("\n[bold white]Step 3b: scanning strings (urls & ips)...[/bold white]")
         
         files_to_scan = []
         

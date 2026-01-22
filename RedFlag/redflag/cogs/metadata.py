@@ -11,7 +11,7 @@ class MetadataScanCog:
         self.scanner = scanner
 
     def run(self):
-        UI.log("\n[bold white]Step 2b: Metadata Extraction (File Type & Hashing)...[/bold white]")
+        UI.log("\n[bold white]Step 2b: extracting metadata...[/bold white]")
         
         files_to_scan = []
         

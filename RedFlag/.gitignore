@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+__init__.py
+.pyc
+
+# Environment
+.env
+venv/
+env/
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Testing
+*.log
+scan_report.json
+
+# Tool Specific
+check.py
+checker.py
+test_*
+

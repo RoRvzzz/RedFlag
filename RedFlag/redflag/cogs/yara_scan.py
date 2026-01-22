@@ -16,7 +16,7 @@ class YaraScanCog:
             UI.log("  [yellow]YARA module not found. Skipping YARA scan.[/yellow]")
             return
 
-        UI.log("\n[bold white]Step 3a: YARA Pattern Scanning...[/bold white]")
+        UI.log("\n[bold white]Step 3a: scanning with yara rules...[/bold white]")
         
         if not self._compile_rules():
             return

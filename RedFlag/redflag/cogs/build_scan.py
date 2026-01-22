@@ -11,7 +11,7 @@ class BuildScanCog:
         self.scanner = scanner
 
     def run(self):
-        UI.log("\n[bold white]Step 2: Scanning Build Configuration (High Priority)...[/bold white]")
+        UI.log("\n[bold white]Step 2: scanning build configuration...[/bold white]")
         
         build_files = []
         if self.scanner.is_file:

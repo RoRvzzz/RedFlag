@@ -10,10 +10,10 @@ class ProjectIdentityCog:
         self.scanner.project_files = []
 
     def run(self):
-        UI.log("\n[bold white]Step 1: Analyzing Target...[/bold white]")
+        UI.log("\n[bold white]Step 1: analyzing target...[/bold white]")
         
         if not os.path.exists(self.scanner.target_path):
-            UI.log("[bold red]❌ Error: Path does not exist.[/bold red]")
+            UI.log("[bold red]Error: Path does not exist.[/bold red]")
             return
 
         if self.scanner.is_file:
