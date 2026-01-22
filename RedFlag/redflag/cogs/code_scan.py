@@ -13,6 +13,10 @@ class CodeScanCog:
     def run(self):
         UI.log("\n[bold white]Step 3: Analyzing source code...[/bold white]")
         
+        # Initialize extracted images list
+        if not hasattr(self.scanner, 'extracted_images'):
+            self.scanner.extracted_images = []
+        
         files_to_scan = []
         
         def is_ignored_dir(d):
@@ -34,6 +38,9 @@ class CodeScanCog:
             UI.log("  [yellow]No suitable source files found to scan.[/yellow]")
             return
 
+        # Track image count before scanning
+        image_count_before = len(self.scanner.extracted_images)
+
         progress = UI.get_progress()
         if progress:
             with progress:
@@ -45,6 +52,15 @@ class CodeScanCog:
             print(f"Scanning {len(files_to_scan)} files...")
             for f in files_to_scan:
                 self._scan_single_file(f)
+        
+        # Show summary of extracted images
+        image_count_after = len(self.scanner.extracted_images)
+        if image_count_after > image_count_before:
+            extracted_count = image_count_after - image_count_before
+            output_dir = os.path.join(self.scanner.target_dir if not self.scanner.is_file else os.path.dirname(self.scanner.target_dir), 'redflag_extracted_images')
+            abs_output_dir = os.path.abspath(output_dir)
+            UI.log(f"  [bold green]✓ Extracted {extracted_count} embedded image(s)[/bold green]")
+            UI.log(f"  [dim]Images saved to: {abs_output_dir}[/dim]")
 
     def _scan_single_file(self, path):
         try:
@@ -53,6 +69,9 @@ class CodeScanCog:
             
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
+            
+            # Extract images first (to help filter false positives)
+            self._extract_images(content, rel_path)
             
             # regex scan
             for cat, patterns in self.scanner.compiled_patterns.items():
@@ -63,22 +82,54 @@ class CodeScanCog:
                         
                         # Filter out benign stack strings (embedded assets)
                         if cat == 'OBFUSCATION' and 'Stack String' in desc:
+                            skip_finding = False
+                            
                             if any(x in ctx.lower() for x in ['font', 'image', 'icon', 'bytes', 'data', 'texture']):
-                                # Likely an asset array, skip or downgrade
-                                continue
-                            if any(x in rel_path.lower() for x in ['font', 'image', 'icon', 'resource', 'asset', 'protect', 'crypto']):
+                                skip_finding = True
+                            elif any(x in rel_path.lower() for x in ['font', 'image', 'icon', 'resource', 'asset', 'protect', 'crypto']):
+                                skip_finding = True
+                            # Check if we've already identified this as a valid image
+                            elif hasattr(self.scanner, 'extracted_images'):
+                                for img_info in self.scanner.extracted_images:
+                                    if img_info['file'] == rel_path and abs(img_info['line'] - line_no) < 5:
+                                        # This array was identified as a valid image, suppress the finding
+                                        skip_finding = True
+                                        break
+                            
+                            if skip_finding:
                                 continue
 
                         # Context-aware refinement for System Commands
                         if cat == 'EXECUTION' and 'System Command' in desc:
+                            # Filter out false positives: function declarations, macro definitions, and capitalized System()
                             lower_ctx = ctx.lower()
+                            
+                            # Skip if it's a function declaration (void System, int System, etc.)
+                            if re.search(r'\b(void|int|bool|string|std::string)\s+System\s*\(', ctx, re.IGNORECASE):
+                                continue
+                            
+                            # Skip if it's a macro definition (#define l_system, #define System, etc.)
+                            if '#define' in ctx or '#ifdef' in ctx or '#ifndef' in ctx:
+                                continue
+                            
+                            # Skip if it's calling a capitalized System() function (not system())
+                            if 'System(' in ctx and 'system(' not in ctx.lower():
+                                continue
+                            
+                            # Skip if it's in a comment
+                            if ctx.strip().startswith('//') or '/*' in ctx or '*/' in ctx:
+                                continue
+                            
+                            # Context-aware scoring for legitimate uses
                             if 'firewall' in lower_ctx or 'netsh' in lower_ctx:
                                 desc = "System Command (Firewall/Network Config)"
-                                # Reduce score slightly as it's a known admin tool usage, but keep it visible
                                 score = 2
                             elif 'ipconfig' in lower_ctx or 'ping' in lower_ctx:
                                 desc = "System Command (Network Info)"
                                 score = 1
+                            elif 'cls' in lower_ctx or 'pause' in lower_ctx:
+                                # Already filtered in pattern, but double-check
+                                continue
 
                         self.scanner.add_finding(Finding(
                             category=cat,
@@ -142,6 +193,106 @@ class CodeScanCog:
 
             except Exception:
                 pass
+
+    def _extract_images(self, content, rel_path):
+        """Extract and verify embedded images from unsigned char arrays"""
+        # Pattern to match unsigned char arrays: unsigned char name[] = { 0x41, 0x42, ... };
+        # Updated to handle multi-line arrays and different spacing
+        array_pattern = re.compile(
+            r'(?:unsigned\s+)?(?:char|byte|uint8_t)\s+\w+\[\]\s*=\s*\{'
+            r'((?:\s*0x[0-9a-fA-F]{2}\s*,?\s*)+)'
+            r'\s*\}',
+            re.IGNORECASE | re.DOTALL
+        )
+        
+        # Image magic bytes (file signatures)
+        IMAGE_SIGNATURES = {
+            b'\x89PNG\r\n\x1a\n': ('PNG', 'png'),
+            b'\xff\xd8\xff': ('JPEG', 'jpg'),
+            b'BM': ('BMP', 'bmp'),
+            b'GIF87a': ('GIF87a', 'gif'),
+            b'GIF89a': ('GIF89a', 'gif'),
+            b'RIFF': ('WEBP/AVI', 'webp'),  # Need to check further for WEBP
+        }
+        
+        for match in array_pattern.finditer(content):
+            try:
+                # Extract hex bytes - get everything between { and }
+                hex_data = match.group(1)
+                # Clean up: remove 0x, commas, whitespace, newlines
+                clean_hex = hex_data.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '').replace('\r', '').replace('\t', '')
+                
+                # Debug: log if we found a potential array (for troubleshooting)
+                # UI.log(f"  [dim]Found potential array in {rel_path}, hex length: {len(clean_hex)}[/dim]")
+                
+                if len(clean_hex) < 20:  # Too small to be an image
+                    continue
+                
+                # Convert to bytes
+                try:
+                    binary_data = binascii.unhexlify(clean_hex)
+                except binascii.Error:
+                    continue
+                
+                if len(binary_data) < 10:  # Minimum image size
+                    continue
+                
+                # Check for image signatures
+                image_type = None
+                image_ext = None
+                
+                for sig, (img_type, ext) in IMAGE_SIGNATURES.items():
+                    if binary_data.startswith(sig):
+                        image_type = img_type
+                        image_ext = ext
+                        break
+                
+                # Special check for WEBP (RIFF...WEBP)
+                if binary_data.startswith(b'RIFF') and b'WEBP' in binary_data[:20]:
+                    image_type = 'WEBP'
+                    image_ext = 'webp'
+                
+                if image_type:
+                    # Successfully identified as an image - this helps reduce false positives
+                    line_no = content[:match.start()].count('\n') + 1
+                    
+                    # Store metadata about extracted image
+                    # This can be used to suppress false positives for "Stack String" findings
+                    if not hasattr(self.scanner, 'extracted_images'):
+                        self.scanner.extracted_images = []
+                    
+                    # Create output directory for extracted images
+                    output_dir = os.path.join(self.scanner.target_dir if not self.scanner.is_file else os.path.dirname(self.scanner.target_dir), 'redflag_extracted_images')
+                    if not os.path.exists(output_dir):
+                        os.makedirs(output_dir, exist_ok=True)
+                    
+                    # Generate safe filename from source file path and line number
+                    safe_filename = rel_path.replace('\\', '_').replace('/', '_').replace(':', '_')
+                    output_filename = f"{safe_filename}_line{line_no}.{image_ext}"
+                    output_path = os.path.join(output_dir, output_filename)
+                    
+                    # Save the image
+                    try:
+                        with open(output_path, 'wb') as img_file:
+                            img_file.write(binary_data)
+                        saved_path = os.path.relpath(output_path, self.scanner.target_dir if not self.scanner.is_file else os.path.dirname(self.scanner.target_dir))
+                    except Exception as e:
+                        saved_path = None
+                    
+                    self.scanner.extracted_images.append({
+                        'file': rel_path,
+                        'line': line_no,
+                        'type': image_type,
+                        'size': len(binary_data),
+                        'saved_path': saved_path,
+                        'data': binary_data[:100]  # Store first 100 bytes for reference
+                    })
+                    
+                    # Don't log during scan to avoid cluttering output - will show summary later
+                    # The images are saved and metadata is stored for false positive filtering
+                    
+            except Exception:
+                continue
 
     def _scan_xor(self, content, rel_path):
         # look for potential byte arrays or obfuscated strings

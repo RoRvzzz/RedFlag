@@ -60,8 +60,11 @@ class MetadataScanCog:
             sha256_hash = self._get_file_hash(path)
             
             # Store metadata in stats or special findings?
-            # For now, let's create an INFO finding if it looks executable but has wrong extension
-            if file_type in ['exe', 'dll', 'elf'] and not path.lower().endswith(f".{file_type}"):
+            # Flag if file extension doesn't match detected type (but DLLs detected as exe is normal - both are PE)
+            if file_type == 'exe' and path.lower().endswith('.dll'):
+                # DLL detected as exe is normal (both are PE files), skip
+                pass
+            elif file_type in ['exe', 'dll', 'elf'] and not path.lower().endswith(f".{file_type}"):
                 self.scanner.add_finding(Finding(
                     category="METADATA",
                     description=f"Mismatched File Extension (Detected: {file_type}, MIME: {mime})",
@@ -72,8 +75,8 @@ class MetadataScanCog:
                     severity="MEDIUM"
                 ))
                 
-            # Log binary files in source directories
-            if file_type in ['exe', 'dll', 'elf'] and not any(x in rel_path.lower() for x in ['bin', 'obj', 'lib']):
+            # Log binary files in source directories (but skip DLLs in common locations)
+            if file_type in ['exe', 'dll', 'elf'] and not any(x in rel_path.lower() for x in ['bin', 'obj', 'lib', 'dll']):
                  self.scanner.add_finding(Finding(
                     category="METADATA",
                     description=f"Suspicious Binary in Source Directory ({file_type})",

@@ -32,16 +32,22 @@ class RedFlagScanner:
         # but here we just instantiate them and pass self
         from ..cogs.project_id import ProjectIdentityCog
         from ..cogs.build_scan import BuildScanCog
+        from ..cogs.metadata import MetadataScanCog
         from ..cogs.code_scan import CodeScanCog
         from ..cogs.yara_scan import YaraScanCog
+        from ..cogs.strings import StringAnalysisCog
+        from ..cogs.mitre import MitreMappingCog
         from ..cogs.verdict import VerdictCog
 
         cogs = [
-            ProjectIdentityCog(self),
-            BuildScanCog(self),
-            CodeScanCog(self),
-            YaraScanCog(self),
-            VerdictCog(self)
+            ProjectIdentityCog(self),      # Step 1
+            BuildScanCog(self),            # Step 2
+            MetadataScanCog(self),         # Step 2b
+            CodeScanCog(self),             # Step 3
+            YaraScanCog(self),             # Step 3a
+            StringAnalysisCog(self),       # Step 3b
+            MitreMappingCog(self),         # Step 4
+            VerdictCog(self)               # Step 5
         ]
 
         for cog in cogs:

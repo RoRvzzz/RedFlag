@@ -80,11 +80,14 @@ class StringAnalysisCog:
                 severity = "INFO"
                 desc = "URL Detected"
                 
-                # Elevate score if suspicious context found
-                if any(x in ctx.lower() for x in ['download', 'curl', 'wget', 'socket', 'connect', 'upload', 'exfil']):
-                    score = 3
-                    severity = "MEDIUM"
-                    desc = "Suspicious URL (Network Activity Context)"
+                # Elevate score if suspicious context found (but not for common game/platform URLs)
+                suspicious_keywords = ['download', 'curl', 'wget', 'socket', 'connect', 'upload', 'exfil', 'httprequest', 'fetch']
+                if any(x in ctx.lower() for x in suspicious_keywords):
+                    # But don't flag if it's just a comment or example code
+                    if not ('example' in ctx.lower() or 'comment' in ctx.lower() or '//' in ctx[:20]):
+                        score = 3
+                        severity = "MEDIUM"
+                        desc = "Suspicious URL (Network Activity Context)"
                 
                 # Elevate if it looks like a raw IP
                 if any(c.isdigit() for c in url) and not any(c.isalpha() for c in url.split('/')[2] if c not in '.:'):

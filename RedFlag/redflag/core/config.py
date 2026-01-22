@@ -40,6 +40,22 @@ SKIP_EXTS = {
     '.suo', '.user', '.filters'
 }
 
+# Benign domains to filter out from URL findings (common legitimate services)
+BENIGN_DOMAINS = {
+    'github.com', 'github.io', 'gitlab.com',
+    'microsoft.com', 'windowsupdate.com',
+    'google.com', 'gstatic.com', 'googleapis.com',
+    'stackoverflow.com', 'stackexchange.com',
+    'wikipedia.org', 'wikimedia.org',
+    'mozilla.org', 'mozilla.com',
+    'sourceforge.net',
+    'example.com', 'example.org', 'localhost',
+    'roblox.com', 'robloxlabs.com',  # Game platform
+    'youtube.com', 'youtu.be',  # Video platform
+    'discord.com', 'discord.gg',  # Communication
+    'reddit.com', 'imgur.com',  # Social media
+}
+
 # Regex Patterns
 PATTERNS = {
     'EXECUTION': [
@@ -47,7 +63,7 @@ PATTERNS = {
         (r'powershell', 4, 'PowerShell Execution'),
         (r'ShellExecute(A|W)?\(.*?\b(http|https|explorer)\b', 1, 'Safe Shell Execution (URL/Explorer)'), # Lower score for common UI actions
         (r'ShellExecute(A|W)?(?!\(.*?\b(http|https|explorer)\b)', 3, 'API Shell Execution'),
-        (r'\bsystem\((?!"cls"|"pause").*?\)', 3, 'System Command'), # Ignore cls and pause
+        (r'\bstd::system\(|(?<![a-zA-Z_])system\s*\(', 3, 'System Command'), # Match system() calls (lowercase only)
         (r'CreateProcess', 3, 'API Process Creation'),
         (r'WinExec', 3, 'Legacy Execution API'),
     ],
@@ -63,7 +79,7 @@ PATTERNS = {
         (r'InternetOpen', 2, 'WinINet API'),
         (r'socket', 2, 'Raw Socket'),
         (r'curl\s+', 3, 'Curl Command'),
-        (r'wget\s+', 3, 'Wget Command'),
+        (r'\bwget\s+', 3, 'Wget Command'), # Word boundary to avoid matching "rawget"
         (r'Invoke-WebRequest', 4, 'PowerShell Download'),
         (r'bitsadmin', 4, 'BITS Persistence/Download'),
     ],

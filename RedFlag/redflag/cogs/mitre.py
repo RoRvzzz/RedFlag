@@ -7,6 +7,8 @@ class MitreMappingCog:
         self.scanner = scanner
 
     def run(self):
+        UI.log("\n[bold white]Step 4: mapping MITRE ATT&CK techniques...[/bold white]")
+        
         # Post-process existing findings to add specific MITRE tags based on context
         for finding in self.scanner.findings:
             mitre_tags = []

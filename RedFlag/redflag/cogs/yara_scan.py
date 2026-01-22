@@ -78,6 +78,18 @@ class YaraScanCog:
                     desc = meta.get('description', rule_name)
                     severity_str = meta.get('severity', 'MEDIUM')
                     
+                    # Filter false positives: PE header matches in embedded assets
+                    if rule_name == 'PE_Header_In_Source':
+                        # Check if file path or filename suggests embedded asset (font, image, texture, etc.)
+                        rel_path_lower = rel_path.lower()
+                        filename_lower = os.path.basename(rel_path).lower()
+                        asset_keywords = ['font', 'image', 'texture', 'icon', 'bitmap', 'resource', 'asset', 'data', 'pay', 'preview']
+                        # Check both path and filename for asset indicators
+                        if any(keyword in rel_path_lower for keyword in asset_keywords) or \
+                           any(keyword in filename_lower for keyword in asset_keywords):
+                            # Likely an embedded asset, skip this false positive
+                            continue
+                    
                     # Map severity string to score
                     score_map = {'CRITICAL': 10, 'HIGH': 5, 'MEDIUM': 3, 'LOW': 1}
                     score = score_map.get(severity_str.upper(), 3)
