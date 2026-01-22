@@ -74,7 +74,7 @@ cd redflag
 **2. Install dependencies:**
 For the best visual experience, install the `rich` library. The tool will still work without it, but the output will be plain text.
 ```bash
-pip install rich
+pip install -r requirements.txt
 ```
 
 ---
