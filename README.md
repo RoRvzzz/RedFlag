@@ -114,6 +114,11 @@ RedFlag performs analysis in 5 steps:
   <img src="RedFlag/redflag/RedFlag.png" alt="RedFlag Logo" width="500">
 </p>
 
+### See it in action!
+<p align= center">
+    <img src="Redflag/redflag.mp4" alt="Redflag demo" width="1080">
+</p>
+
 ---
 
 ![Disclaimer](https://img.shields.io/badge/WARNING-Disclaimer-orange?style=for-the-badge&logo=alert&logoColor=white)
