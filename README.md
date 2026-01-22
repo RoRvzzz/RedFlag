@@ -116,7 +116,7 @@ RedFlag performs analysis in 5 steps:
 
 ### See it in action!
 <p align= center">
-    <img src="Redflag/redflag.mp4" alt="Redflag demo" width="1080">
+    <img src="Redflag/redflag/redflag.mp4" alt="Redflag demo" width="1080">
 </p>
 
 ---
