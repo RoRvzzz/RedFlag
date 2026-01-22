@@ -85,13 +85,13 @@ You can run RedFlag against a single file or an entire directory (like a Visual 
 
 ![Mode](https://img.shields.io/badge/Mode-Basic_Usage-black?style=flat-square)
 ```bash
-python redflag.py "C:\Path\To\Suspicious\Project"
+python run.py "C:\Path\To\Suspicious\Project"
 ```
 
 ![Mode](https://img.shields.io/badge/Mode-Interactive-black?style=flat-square)
 If you run the script without arguments, it will prompt you for the path:
 ```bash
-python redflag.py
+python run.py
 ```
 
 ---
