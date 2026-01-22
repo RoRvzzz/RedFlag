@@ -115,7 +115,7 @@ RedFlag performs analysis in 5 steps:
 </p>
 
 ### See it in action!
-[Watch the RedFlag demo video here!](RedFlag/redflag.mp4)
+<div style="position:relative; width:100%; height:0px; padding-bottom:52.854%"><iframe allow="fullscreen" allowfullscreen height="100%" src="https://streamable.com/e/ot16it?" width="100%" style="border:none; width:100%; height:100%; position:absolute; left:0px; top:0px; overflow:hidden;"></iframe></div>
 
 ---
 
