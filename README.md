@@ -115,7 +115,7 @@ RedFlag performs analysis in 5 steps:
 </p>
 
 ### See it in action!
-[Watch the RedFlag demo video here!](RedFlag/RedFlag.mp4)
+[Watch the RedFlag demo video here!](RedFlag/redflag.mp4)
 
 ---
 
