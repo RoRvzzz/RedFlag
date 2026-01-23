@@ -4,12 +4,12 @@ Configuration and constants for RedFlag
 import os
 import re
 
-# Load banner from assets folder
+# load banner from assets folder
 def _load_banner():
-    """Load the ASCII art banner from assets/ascii_art.txt"""
-    # Get the directory where this config file is located
+    """load the ASCII art banner from assets/ascii_art.txt"""
+    # get the directory where this config file is located
     config_dir = os.path.dirname(os.path.abspath(__file__))
-    # Navigate to assets folder (go up from redflag/core to redflag, then up to root, then into assets)
+    # navigate to assets folder (go up from redflag/core to redflag, then up to root, then into assets)
     root_dir = os.path.dirname(os.path.dirname(os.path.dirname(config_dir)))
     banner_path = os.path.join(root_dir, 'assets', 'ascii_art.txt')
     
@@ -17,7 +17,7 @@ def _load_banner():
         with open(banner_path, 'r', encoding='utf-8') as f:
             return f.read()
     except (FileNotFoundError, IOError):
-        # Fallback to hardcoded banner if file not found
+        # fallback to hardcoded banner if file not found
         return r"""
 $$$$$$$\                  $$\ $$$$$$$$\ $$\                      oo_____________
 $$  __$$\                 $$ |$$  _____|$$ |                     ||\\\\////\\\\||
@@ -42,31 +42,31 @@ IGNORE_DIRS = {
     'libs', 'imgui', 'include', 'third_party'
 }
 
-# Files to never scan (the tool itself)
+# files to never scan (the tool itself)
 IGNORE_FILES = {
     'redflag.py', 'check.py', 'checker.py', 'main.py', '__init__.py', 
     'fonts.h', 'prot.hxx', 'obfusheader.h', 'VMProtectSDK.h', 'vmprotect.h',
     'gui.cpp', 'desync.cpp', 'configsystem.cpp'
 }
 
-# Extensions to skip (binaries, images, etc.)
+# extensions to skip (binaries, images, etc.)
 SKIP_EXTS = {
-    # Binaries
+    # binaries
     '.exe', '.dll', '.obj', '.pdb', '.idb', '.ilk', '.sys', '.drv',
     '.lib', '.a', '.so', '.dylib', '.exp', '.bin', '.hex',
-    # Assets
+    # assets
     '.png', '.jpg', '.jpeg', '.gif', '.ico', '.pdf', '.webp', '.bmp',
     '.tiff', '.tga', '.wav', '.mp3', '.mp4', '.avi', '.mov',
     '.ttf', '.otf', '.woff', '.woff2', '.eot',
-    # Archives
+    # archives
     '.zip', '.rar', '.7z', '.tar', '.gz',
-    # C++ artifacts
+    # c++ artifacts
     '.ifc', '.ifcast', '.ipch', '.pch',
-    # VS Artifacts
+    # vs artifacts
     '.suo', '.user', '.filters', '.aps', '.ncb'
 }
 
-# Benign domains to filter out from URL findings (common legitimate services)
+# benign domains to filter out from URL findings (common legitimate services)
 BENIGN_DOMAINS = {
     'github.com', 'github.io', 'raw.githubusercontent.com', 'gitlab.com',
     'microsoft.com', 'windowsupdate.com',
@@ -82,7 +82,7 @@ BENIGN_DOMAINS = {
     'reddit.com', 'imgur.com',  # Social media
 }
 
-# Regex Patterns
+# regex patterns
 PATTERNS = {
     'EXECUTION': [
         (r'cmd\.exe', 3, 'Command Prompt Execution'),
@@ -124,11 +124,11 @@ PATTERNS = {
     ]
 }
 
-# Pre-compiled patterns will be generated in scanner init, or lazily here?
+# pre-compiled patterns will be generated in scanner init, or lazily here?
 # Let's keep config purely data for now.
 BASE64_REGEX = re.compile(r'(?:[A-Za-z0-9+/]{4}){20,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?')
 
-# Default YARA Rules
+# default yara rules
 DEFAULT_YARA_RULES = r"""
 rule Suspicious_Powershell {
     meta:

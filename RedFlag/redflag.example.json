@@ -1,0 +1,26 @@
+{
+  "comment": "RedFlag Configuration File. Place in project root as .redflag",
+  "ignore_paths": [
+    "tests/",
+    "vendor/legacy_library/",
+    "assets/models/"
+  ],
+  "ignore_rules": [
+    "Mismatched File Extension",
+    "Suspicious Binary in Source Directory"
+  ],
+  "custom_rules": [
+    {
+      "category": "SECRETS",
+      "pattern": "AKIA[0-9A-Z]{16}",
+      "score": 10,
+      "description": "AWS Access Key ID"
+    },
+    {
+      "category": "INTERNAL_POLICY",
+      "pattern": "strcpy\\(",
+      "score": 2,
+      "description": "Unsafe strcpy usage (Use strcpy_s)"
+    }
+  ]
+}

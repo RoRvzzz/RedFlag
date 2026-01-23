@@ -36,13 +36,13 @@ class YaraScanCog:
             return False
 
     def _scan_files(self):
-        # Use cached file list for efficiency
+        # use cached file list for efficiency
         files_to_scan = self.scanner.get_files_to_scan(include_binaries=False)
 
         if not files_to_scan:
             return
 
-        # Use multi-threading for faster scanning
+        # use multi-threading for faster scanning
         max_workers = min(8, len(files_to_scan))
         
         progress = UI.get_progress()
@@ -70,27 +70,27 @@ class YaraScanCog:
                     desc = meta.get('description', rule_name)
                     severity_str = meta.get('severity', 'MEDIUM')
                     
-                    # Filter false positives: PE header matches in embedded assets
+                    # filter false positives: PE header matches in embedded assets
                     if rule_name == 'PE_Header_In_Source':
-                        # Check if file path or filename suggests embedded asset (font, image, texture, etc.)
+                        # check if file path or filename suggests embedded asset (font, image, texture, etc.)
                         rel_path_lower = rel_path.lower()
                         filename_lower = os.path.basename(rel_path).lower()
                         asset_keywords = ['font', 'image', 'texture', 'icon', 'bitmap', 'resource', 'asset', 'data', 'pay', 'preview']
-                        # Check both path and filename for asset indicators
+                        # check both path and filename for asset indicators
                         if any(keyword in rel_path_lower for keyword in asset_keywords) or \
                            any(keyword in filename_lower for keyword in asset_keywords):
-                            # Likely an embedded asset, skip this false positive
+                            # likely an embedded asset, skip this false positive
                             continue
                     
-                    # Map severity string to score
+                    # map severity string to score
                     score_map = {'CRITICAL': 10, 'HIGH': 5, 'MEDIUM': 3, 'LOW': 1}
                     score = score_map.get(severity_str.upper(), 3)
                     
-                    # Get matched strings for context
+                    # get matched strings for context
                     context = ""
                     if match.strings:
                         try:
-                            # match.strings is a list of (offset, identifier, data)
+                            # match.strings is a list of (offset, identifier, data) tuple
                             context = f"Matched: {match.strings[0][2].decode('utf-8', errors='ignore')}"
                         except:
                             context = "Binary match"
@@ -106,10 +106,10 @@ class YaraScanCog:
                         metadata={'rule': rule_name, 'meta': meta}
                     ))
         except (OSError, PermissionError) as e:
-            # Expected file access errors - silently skip
+            # expected file access errors - silently skip
             pass
         except Exception as e:
-            # Log unexpected errors for debugging (YARA errors are usually expected)
+            # log unexpected errors for debugging (YARA errors are usually expected)
             if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
                 UI.log(f"  [dim red]YARA error scanning {path}: {type(e).__name__}[/dim red]")
             pass

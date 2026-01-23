@@ -12,6 +12,6 @@ class Finding:
     line: int
     context: str
     score: int
-    severity: str  # LOW, MEDIUM, HIGH, CRITICAL
-    confidence: str = "MEDIUM" # LOW, MEDIUM, HIGH
+    severity: str  # low, medium, high, critical
+    confidence: str = "MEDIUM" # low,   medium, high
     metadata: Dict[str, Any] = field(default_factory=dict)

@@ -92,7 +92,7 @@ def xor_brute(data, min_length=4):
     Returns a list of (key, decoded_text) tuples where the result looks printable.
     """
     results = []
-    # If data is string, convert to bytes (latin1 preserves byte values 1:1)
+    # if data is string, convert to bytes (latin1 preserves byte values 1:1)
     if isinstance(data, str):
         data = data.encode('latin1', errors='ignore')
             
@@ -101,7 +101,7 @@ def xor_brute(data, min_length=4):
 
     for key in range(1, 256):
         try:
-            # Optimization: Use translation table - O(1) lookup inside C implementation
+            # optimization: use translation table - O(1) lookup inside C implementation
             # Create translation table: map each byte to itself XOR key
             trans_table = bytes.maketrans(
                 bytes(range(256)),
@@ -109,22 +109,22 @@ def xor_brute(data, min_length=4):
             )
             decoded_bytes = data.translate(trans_table)
             
-            # Stricter validation: Require alphanumeric characters, not just printable
+            # stricter validation: require alphanumeric characters, not just printable
             # Fast check: If it contains too many control chars, likely not text
-            # Allow tab (9), newline (10), carriage return (13)
+            # allow tab (9), newline (10), carriage return (13)
             non_printable = sum(1 for b in decoded_bytes if (b < 32 and b not in (9, 10, 13)) or b > 126)
             
-            if non_printable / len(decoded_bytes) < 0.08:  # Stricter: 8% threshold (was 10%)
+            if non_printable / len(decoded_bytes) < 0.08:  # stricter: 8% threshold (was 10%)
                 text = decoded_bytes.decode('utf-8', errors='ignore')
                 
-                # Additional check: Must contain alphanumeric characters (not just symbols)
+                # additional check: must contain alphanumeric characters (not just symbols)
                 alnum_count = sum(1 for c in text if c.isalnum())
-                if alnum_count / len(text) < 0.3:  # At least 30% alphanumeric
+                if alnum_count / len(text) < 0.3:  # at least 30% alphanumeric
                     continue
                 
-                # Skip if it's mostly whitespace or code delimiters
+                # skip if it's mostly whitespace or code delimiters
                 whitespace_delim_count = sum(1 for c in text if c.isspace() or c in '{;}')
-                if whitespace_delim_count / len(text) > 0.5:  # More than 50% whitespace/delimiters
+                if whitespace_delim_count / len(text) > 0.5:  # more than 50% whitespace/delimiters
                     continue
                 
                 results.append((key, text))

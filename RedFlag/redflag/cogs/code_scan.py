@@ -10,6 +10,90 @@ from ..core.utils import UI, calculate_entropy, get_severity, xor_brute
 # Config
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB limit per file for code scanning
 
+def normalize_cpp_string(content: str) -> str:
+    """
+    Normalize C++ source to reduce simple string-concatenation evasion:
+    - Remove C/C++ comments outside of strings (preserving newlines)
+    - Merge adjacent string literals: "A" "B" -> "AB" (repeatedly)
+
+    Note: This is heuristic; we aim for better detection, not perfect parsing.
+    """
+    if not content:
+        return content
+
+    out = []
+    i = 0
+    n = len(content)
+    in_str = False
+    str_quote = ""
+    escape = False
+    in_line_comment = False
+    in_block_comment = False
+
+    while i < n:
+        ch = content[i]
+        nxt = content[i + 1] if i + 1 < n else ""
+
+        if in_line_comment:
+            # consume until newline; preserve newline
+            if ch == "\n":
+                in_line_comment = False
+                out.append("\n")
+            i += 1
+            continue
+
+        if in_block_comment:
+            # consume until */
+            if ch == "*" and nxt == "/":
+                in_block_comment = False
+                i += 2
+                continue
+            # preserve newlines so line numbers stay roughly stable
+            if ch == "\n":
+                out.append("\n")
+            i += 1
+            continue
+
+        if in_str:
+            out.append(ch)
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == str_quote:
+                in_str = False
+                str_quote = ""
+            i += 1
+            continue
+
+        # not in string/comment
+        if ch == "/" and nxt == "/":
+            in_line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            in_block_comment = True
+            i += 2
+            continue
+        if ch in ("\"", "'"):
+            in_str = True
+            str_quote = ch
+            out.append(ch)
+            i += 1
+            continue
+
+        out.append(ch)
+        i += 1
+
+    normalized = "".join(out)
+
+    # merge adjacent string literals
+    pattern = re.compile(r'"([^"]*)"\s+"([^"]*)"')
+    while pattern.search(normalized):
+        normalized = pattern.sub(r'"\1\2"', normalized)
+
+    return normalized
+
 class CodeScanCog:
     def __init__(self, scanner):
         self.scanner = scanner
@@ -45,7 +129,7 @@ class CodeScanCog:
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 executor.map(self._scan_single_file, files_to_scan)
         
-        # Show summary of extracted images
+        # show summary of extracted images
         image_count_after = len(self.scanner.extracted_images)
         if image_count_after > image_count_before:
             extracted_count = image_count_after - image_count_before
@@ -56,68 +140,79 @@ class CodeScanCog:
 
     def _scan_single_file(self, path):
         try:
-            # Safety: Skip huge files
+            # safety: skip huge files
             if os.path.getsize(path) > MAX_FILE_SIZE:
                 return
             
             rel_base = self.scanner.target_dir if not self.scanner.is_file else os.path.dirname(self.scanner.target_dir)
             rel_path = os.path.relpath(path, rel_base)
             
-            # Only scan C++ source files for XOR obfuscation (not project files, HTML, etc.)
+            # only scan c++ source files for XOR obfuscation (not project files, HTML, etc.)
             source_extensions = {'.cpp', '.h', '.hpp', '.c', '.cc', '.cxx', '.hxx'}
             _, ext = os.path.splitext(path.lower())
             is_source_file = ext in source_extensions
             
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
+
+            # Normalize for anti-evasion (string literal concatenation, comments between literals)
+            normalized = normalize_cpp_string(content)
+
+            # Detect dangerous #define aliasing (macro-based evasion)
+            self._scan_defines(normalized, rel_path)
             
-            # 1. Extract Images (Heavy Regex) - Only run if likely to contain images
-            # Only run if "unsigned" or "char" and "{" appear to save CPU
+            # 1. extract Images (Heavy Regex) - only run if likely to contain images
+            # only run if "unsigned" or "char" and "{" appear to save CPU
             if "{" in content and ("char" in content or "byte" in content or "unsigned" in content):
                 self._extract_images(content, rel_path)
             
-            # regex scan
+            # regex scan (use normalized content)
             for cat, patterns in self.scanner.compiled_patterns.items():
                 for pat, score, desc in patterns:
-                    for match in pat.finditer(content):
-                        line_no = content[:match.start()].count('\n') + 1
-                        ctx = content[max(0, match.start()-50):min(len(content), match.end()+50)].replace('\n', ' ')
+                    for match in pat.finditer(normalized):
+                        # If normalization removed comments, line numbers are still *roughly* stable
+                        line_no = normalized[:match.start()].count('\n') + 1
+                        ctx = normalized[max(0, match.start()-50):min(len(normalized), match.end()+50)].replace('\n', ' ')
+
+                        # allow suppressing specific rules via .redflag ignore_rules
+                        if hasattr(self.scanner, "should_ignore_rule") and self.scanner.should_ignore_rule(desc):
+                            continue
                         
-                        # Contextual "Stack String" filtering using entropy analysis
+                        # contextual "Stack String" filtering using entropy analysis
                         if cat == 'OBFUSCATION' and 'Stack String' in desc:
                             skip_finding = False
                             
-                            # Try to extract the actual byte array data for entropy analysis
+                            # try to extract the actual byte array data for entropy analysis
                             try:
-                                # Extract hex bytes from context: { 0x41, 0x42, ... }
+                                # extract hex bytes from context: { 0x41, 0x42, ... }
                                 hex_match = re.search(r'\{((?:\s*0x[0-9a-fA-F]{2}\s*,?\s*)+)\}', ctx)
                                 if hex_match:
                                     hex_data = hex_match.group(1)
                                     clean_hex = hex_data.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '').replace('\r', '').replace('\t', '')
-                                    if len(clean_hex) >= 20:  # Only analyze if substantial data
+                                    if len(clean_hex) >= 20:  # only analyze if substantial data
                                         try:
                                             binary_data = binascii.unhexlify(clean_hex)
                                             entropy = calculate_entropy(binary_data)
                                             
-                                            # Entropy-based filtering:
+                                            # entropy-based filtering:
                                             # < 3.5: English text/code (likely benign)
                                             # > 7.5: Compressed/Encrypted (suspicious)
                                             # 4.0-6.0: Lookup table/font map (lower severity)
                                             
                                             if entropy < 3.5:
-                                                # Low entropy = likely text/code, skip
+                                                # low entropy = likely text/code, skip
                                                 skip_finding = True
                                             elif 4.0 <= entropy <= 6.0:
-                                                # Medium entropy = likely lookup table/font, reduce severity
+                                                # medium entropy = likely lookup table/font, reduce severity
                                                 score = max(2, score - 1)  # Reduce by 1, minimum 2
                                                 desc = f"{desc} (Lookup Table/Font - Lower Risk)"
                                             # entropy > 7.5 keeps original high score
                                         except (binascii.Error, ValueError):
-                                            pass  # If hex parsing fails, fall through to other checks
+                                            pass  # if hex parsing fails, fall through to other checks
                             except Exception:
-                                pass  # If extraction fails, fall through to other checks
+                                pass  # if extraction fails, fall through to other checks
                             
-                            # Fallback: Check if we've already identified this as a valid image
+                            # fallback: check if we've already identified this as a valid image
                             if not skip_finding:
                                 with self.scanner._lock:
                                     for img_info in self.scanner.extracted_images:
@@ -125,7 +220,7 @@ class CodeScanCog:
                                             skip_finding = True
                                             break
                             
-                            # Additional context checks
+                            # additional context checks
                             if not skip_finding:
                                 if any(x in ctx.lower() for x in ['font', 'image', 'icon', 'bytes', 'data', 'texture']):
                                     skip_finding = True
@@ -135,51 +230,51 @@ class CodeScanCog:
                             if skip_finding:
                                 continue
                         
-                        # Decode and analyze hex-escaped strings
+                        # decode and analyze hex-escaped strings
                         if cat == 'OBFUSCATION' and 'Hex-Escaped String' in desc:
                             try:
-                                # Extract the hex-escaped string
+                                # extract the hex-escaped string
                                 str_match = re.search(r'["\']((?:\\x[0-9a-fA-F]{2})+?)["\']', ctx)
                                 if str_match:
                                     hex_str = str_match.group(1)
-                                    # Decode \x escapes
+                                    # decode \x escapes
                                     decoded_bytes = bytes.fromhex(hex_str.replace('\\x', ''))
                                     decoded_text = decoded_bytes.decode('utf-8', errors='ignore')
                                     
-                                    # Check for suspicious content in decoded string
+                                    # check for suspicious content in decoded string
                                     suspicious_keywords = ['powershell', 'cmd', 'iwr', 'download', 'invoke', 'start-process', 
                                                           'http', 'https', 'exe', 'dll', 'base64', 'encoded']
                                     if any(kw in decoded_text.lower() for kw in suspicious_keywords):
-                                        # Elevate severity and add decoded content to context
+                                        # elevate severity and add decoded content to context
                                         score = 8  # High severity for decoded malicious content
                                         desc = f"Hex-Escaped String (Decoded: {decoded_text[:50]}...)"
                                         ctx = f"Original: {ctx[:100]}... | Decoded: {decoded_text[:200]}"
                             except Exception:
-                                pass  # If decoding fails, use original finding
+                                pass  # if decoding fails, use original finding
 
-                        # Context-aware refinement for System Commands
+                        # context-aware refinement for System Commands
                         if cat == 'EXECUTION' and 'System Command' in desc:
-                            # Filter out false positives: function declarations, macro definitions, and capitalized System()
+                            # filter out false positives: function declarations, macro definitions, and capitalized System()
                             lower_ctx = ctx.lower()
                             
-                            # Skip if it's a function declaration (void System, int System, etc.)
+                            # skip if it's a function declaration (void System, int System, etc.)
                             if re.search(r'\b(void|int|bool|string|std::string)\s+System\s*\(', ctx, re.IGNORECASE):
                                 continue
                             
-                            # Skip if it's a macro definition (#define l_system, #define System, etc.)
+                            # skip if it's a macro definition (#define l_system, #define System, etc.)
                             if '#define' in ctx or '#ifdef' in ctx or '#ifndef' in ctx:
                                 continue
                             
-                            # Skip if it's calling a capitalized System() function (not system())
-                            # Check for namespace-qualified System() calls like utils::output::System()
+                            # skip if it's calling a capitalized System() function (not system())
+                            # check for namespace-qualified System() calls like utils::output::System()
                             if re.search(r'(?:::|\.)\s*System\s*\(', ctx) or ('System(' in ctx and 'system(' not in lower_ctx):
                                 continue
                             
-                            # Skip if it's in a comment
+                            # skip if it's in a comment
                             if ctx.strip().startswith('//') or '/*' in ctx or '*/' in ctx:
                                 continue
                             
-                            # Context-aware scoring for legitimate uses
+                            # context-aware scoring for legitimate uses
                             if 'firewall' in lower_ctx or 'netsh' in lower_ctx:
                                 desc = "System Command (Firewall/Network Config)"
                                 score = 2
@@ -187,76 +282,76 @@ class CodeScanCog:
                                 desc = "System Command (Network Info)"
                                 score = 1
                             elif 'cls' in lower_ctx or 'pause' in lower_ctx:
-                                # Already filtered in pattern, but double-check
+                                # already filtered in pattern, but double-check
                                 continue
                         
-                        # Context-aware filtering for network APIs (reduce severity, don't skip entirely)
+                        # context-aware filtering for network APIs (reduce severity, don't skip entirely)
                         if cat == 'NETWORK' and ('WinINet API' in desc or 'Raw Socket' in desc):
                             lower_ctx = ctx.lower()
                             lower_rel_path = rel_path.lower()
                             
-                            # Skip if it's clearly example/documentation code
+                            # skip if it's clearly example/documentation code
                             if 'example' in lower_ctx or 'demo' in lower_ctx or 'test' in lower_ctx:
-                                # Check if it's in a comment or string literal (likely documentation)
+                                # check if it's in a comment or string literal (likely documentation)
                                 if ctx.strip().startswith('//') or '/*' in ctx or '*/' in ctx or '"Example' in ctx or "'Example" in ctx:
                                     continue
                             
-                            # Reduce severity (don't skip) if it's in HTTP client/library code
+                            # reduce severity (don't skip) if it's in HTTP client/library code
                             # This way we still detect malicious use but reduce false positives
                             if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'utils', 'common', 'shared', 'misc', 'http_client', 'httpclient', 'network', 'net']):
-                                # Check if it's a wrapper or legitimate library code
+                                # check if it's a wrapper or legitimate library code
                                 if 'wrapper' in lower_ctx or 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx or 'httpclient' in lower_ctx or 'http_client' in lower_ctx:
-                                    # Reduce score but still report (could be hiding malicious code)
+                                    # reduce score but still report (could be hiding malicious code)
                                     score = max(1, score - 2)  # Reduce by 2, minimum 1
                                     desc = f"{desc} (Library Code - Lower Risk)"
                             
-                            # Skip Raw Socket if it's matching variable names, not function calls
+                            # skip Raw Socket if it's matching variable names, not function calls
                             if 'Raw Socket' in desc:
-                                # Check if it's matching variable names like socket_wrapper, closesocket, etc.
+                                # check if it's matching variable names like socket_wrapper, closesocket, etc.
                                 if any(x in lower_ctx for x in ['socket_wrapper', 'closesocket', 'socket_wrapper(', 'socket_wrapper{', 'socket_wrapper=']):
                                     continue
-                                # Check if it's just a struct/class definition, not actual socket() call
+                                # check if it's just a struct/class definition, not actual socket() call
                                 if 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx:
-                                    # Make sure it's not an actual socket() function call
+                                    # make sure it's not an actual socket() function call
                                     if not re.search(r'\bsocket\s*\(', lower_ctx):
                                         continue
                             
-                            # Reduce severity for WinINet in error handling or library context
+                            # reduce severity for WinINet in error handling or library context
                             if 'WinINet API' in desc:
-                                # Reduce score if it's error handling code (cerr, error, failed, etc.)
+                                # reduce score if it's error handling code (cerr, error, failed, etc.)
                                 if any(x in lower_ctx for x in ['cerr', 'error', 'failed', 'null', 'if (', 'return']):
-                                    # But only if it's clearly library/error handling, not actual malicious usage
+                                    # but only if it's clearly library/error handling, not actual malicious usage
                                     if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'misc', 'http_client', 'httpclient']) or 'example' in lower_ctx:
                                         score = max(1, score - 1)  # Reduce by 1, minimum 1
                                         desc = f"{desc} (Error Handling - Lower Risk)"
-                                # Reduce severity if it's clearly an HTTP client class/function
+                                # reduce severity if it's clearly an HTTP client class/function
                                 if 'httpclient' in lower_ctx or 'http_client' in lower_ctx or 'initialize' in lower_ctx:
                                     score = max(1, score - 1)  # Reduce by 1, minimum 1
                                     desc = f"{desc} (HTTP Client - Lower Risk)"
                         
-                        # Context-aware filtering for XOR (reduce severity, don't skip entirely)
+                        # context-aware filtering for XOR (reduce severity, don't skip entirely)
                         if cat == 'CRYPTO' and 'XOR Operation' in desc:
                             lower_ctx = ctx.lower()
                             lower_rel_path = rel_path.lower()
                             
-                            # Reduce severity (don't skip) if it's in compression/utility code
+                            # reduce severity (don't skip) if it's in compression/utility code
                             # This way we still detect malicious XOR but reduce false positives
                             if any(x in lower_rel_path for x in ['compression', 'compress', 'util', 'utils', 'helper', 'utility']):
-                                # Check if context mentions compression, encoding, or basic obfuscation
+                                # check if context mentions compression, encoding, or basic obfuscation
                                 if any(x in lower_ctx for x in ['compression', 'compress', 'encode', 'decode', 'obfuscat', 'encrypt', 'decrypt', 'utility', 'helper']):
-                                    # Reduce score but still report (could be hiding malicious code)
+                                    # reduce score but still report (could be hiding malicious code)
                                     score = max(1, score - 1)  # Reduce by 1, minimum 1
                                     desc = f"{desc} (Utility Code - Lower Risk)"
-                            # Reduce severity if it's in a comment explaining it's for obfuscation/compression
+                            # reduce severity if it's in a comment explaining it's for obfuscation/compression
                             elif 'simple xor' in lower_ctx or 'basic obfuscat' in lower_ctx or 'xor encryption' in lower_ctx:
                                 score = max(1, score - 1)  # Reduce by 1, minimum 1
                                 desc = f"{desc} (Documented Usage - Lower Risk)"
                             
-                            # BUT: If XOR is combined with suspicious patterns, keep high severity
+                            # but: if XOR is combined with suspicious patterns, keep high severity
                             # Check surrounding context for suspicious combinations
                             suspicious_indicators = ['download', 'upload', 'execute', 'payload', 'shell', 'cmd', 'powershell']
                             if any(indicator in lower_ctx for indicator in suspicious_indicators):
-                                # Keep original score - this is suspicious even in utility code
+                                    # keep original score - this is suspicious even in utility code
                                 pass
 
                         self.scanner.add_finding(Finding(
@@ -269,16 +364,53 @@ class CodeScanCog:
                             severity=get_severity(score)
                         ))
 
-            # 3. Base64 & XOR Scan
-            # Only scan if content length suggests it might hide payloads
-            if len(content) > 100:  # Skip tiny files
+            # 3. base64 & XOR Scan
+            # only scan if content length suggests it might hide payloads
+            if len(content) > 100:  # skip tiny files
                 self._scan_blobs(content, rel_path)
-                # Only scan XOR on actual C++ source files (not project files, HTML, etc.)
+                # only scan XOR on actual C++ source files (not project files, HTML, etc.)
                 if is_source_file:
                     self._scan_xor(content, rel_path)
 
-        except Exception:
+        except (UnicodeError, OSError, PermissionError):
+            # Expected file read errors - skip
             pass
+        except Exception as e:
+            # Internal errors should not be silently swallowed in verbose mode
+            if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
+                UI.log(f"  [dim red]INTERNAL ERROR in {rel_path}: {type(e).__name__}: {e}[/dim red]")
+            pass
+
+    def _scan_defines(self, content: str, rel_path: str):
+        """
+        Detect macro aliasing used to hide dangerous APIs from simple regex scans.
+        Example: #define RUN_CMD system  -> RUN_CMD("whoami")
+        """
+        define_pattern = re.compile(r'^\s*#define\s+(\w+)\s+(.*)', re.MULTILINE)
+        suspicious_targets = [
+            "system", "std::system", "createprocess", "shellexecute", "winexec",
+            "powershell", "cmd.exe", "invoke-webrequest"
+        ]
+
+        for m in define_pattern.finditer(content):
+            alias, value = m.group(1), (m.group(2) or "").strip()
+            value_lower = value.lower()
+            if any(t in value_lower for t in suspicious_targets):
+                desc = f"Dangerous API Aliasing via #define ({alias} -> {value[:120]})"
+                if hasattr(self.scanner, "should_ignore_rule") and self.scanner.should_ignore_rule(desc):
+                    continue
+
+                line_no = content[:m.start()].count("\n") + 1
+                self.scanner.add_finding(Finding(
+                    category="OBFUSCATION",
+                    description=desc,
+                    file=rel_path,
+                    line=line_no,
+                    context=m.group(0)[:200],
+                    score=4,
+                    severity=get_severity(4),
+                    metadata={"alias": alias, "value": value}
+                ))
 
     def _scan_blobs(self, content, rel_path):
         for match in BASE64_REGEX.finditer(content):
@@ -321,19 +453,19 @@ class CodeScanCog:
                     ))
 
             except (UnicodeError, OSError, PermissionError) as e:
-                # Expected file read errors - silently skip
+                # expected file read errors - silently skip
                 pass
             except Exception as e:
-                # Log internal errors for debugging (but don't crash the scan)
-                # Only log in verbose mode to avoid cluttering output
+                # log internal errors for debugging (but don't crash the scan)
+                # only log in verbose mode to avoid cluttering output
                 if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
                     UI.log(f"  [dim red]Error scanning {rel_path}: {type(e).__name__}[/dim red]")
                 pass
 
     def _extract_images(self, content, rel_path):
-        """Extract and verify embedded images from unsigned char arrays"""
+        """extract and verify embedded images from unsigned char arrays"""
         # Pattern to match unsigned char arrays: unsigned char name[] = { 0x41, 0x42, ... };
-        # Updated to handle multi-line arrays and different spacing
+        # updated to handle multi-line arrays and different spacing
         array_pattern = re.compile(
             r'(?:unsigned\s+)?(?:char|byte|uint8_t)\s+\w+\[\]\s*=\s*\{'
             r'((?:\s*0x[0-9a-fA-F]{2}\s*,?\s*)+)'
@@ -341,7 +473,7 @@ class CodeScanCog:
             re.IGNORECASE | re.DOTALL
         )
         
-        # Image magic bytes (file signatures)
+        # image magic bytes (file signatures)
         IMAGE_SIGNATURES = {
             b'\x89PNG\r\n\x1a\n': ('PNG', 'png'),
             b'\xff\xd8\xff': ('JPEG', 'jpg'),
@@ -353,27 +485,27 @@ class CodeScanCog:
         
         for match in array_pattern.finditer(content):
             try:
-                # Extract hex bytes - get everything between { and }
+                # extract hex bytes - get everything between { and }
                 hex_data = match.group(1)
-                # Clean up: remove 0x, commas, whitespace, newlines
+                # clean up: remove 0x, commas, whitespace, newlines
                 clean_hex = hex_data.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '').replace('\r', '').replace('\t', '')
                 
-                # Debug: log if we found a potential array (for troubleshooting)
+                # debug: log if we found a potential array (for troubleshooting)
                 # UI.log(f"  [dim]Found potential array in {rel_path}, hex length: {len(clean_hex)}[/dim]")
                 
-                if len(clean_hex) < 20:  # Too small to be an image
+                if len(clean_hex) < 20:  # too small to be an image
                     continue
                 
-                # Convert to bytes
+                # convert to bytes
                 try:
                     binary_data = binascii.unhexlify(clean_hex)
                 except binascii.Error:
                     continue
                 
-                if len(binary_data) < 10:  # Minimum image size
+                if len(binary_data) < 10:  # minimum image size
                     continue
                 
-                # Check for image signatures
+                # check for image signatures
                 image_type = None
                 image_ext = None
                 
@@ -383,31 +515,31 @@ class CodeScanCog:
                         image_ext = ext
                         break
                 
-                # Special check for WEBP (RIFF...WEBP)
+                # special check for WEBP (RIFF...WEBP)
                 if binary_data.startswith(b'RIFF') and b'WEBP' in binary_data[:20]:
                     image_type = 'WEBP'
                     image_ext = 'webp'
                 
                 if image_type:
-                    # Successfully identified as an image - this helps reduce false positives
+                    # successfully identified as an image - this helps reduce false positives
                     line_no = content[:match.start()].count('\n') + 1
                     
-                    # Store metadata about extracted image
-                    # This can be used to suppress false positives for "Stack String" findings
+                    # store metadata about extracted image
+                    # this can be used to suppress false positives for "Stack String" findings
                     if not hasattr(self.scanner, 'extracted_images'):
                         self.scanner.extracted_images = []
                     
-                    # Create output directory for extracted images
+                    # create output directory for extracted images
                     output_dir = os.path.join(self.scanner.target_dir if not self.scanner.is_file else os.path.dirname(self.scanner.target_dir), 'redflag_extracted_images')
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir, exist_ok=True)
                     
-                    # Generate safe filename from source file path and line number
+                    # generate safe filename from source file path and line number
                     safe_filename = rel_path.replace('\\', '_').replace('/', '_').replace(':', '_')
                     output_filename = f"{safe_filename}_line{line_no}.{image_ext}"
                     output_path = os.path.join(output_dir, output_filename)
                     
-                    # Save the image
+                    # save the image
                     try:
                         with open(output_path, 'wb') as img_file:
                             img_file.write(binary_data)
@@ -415,32 +547,32 @@ class CodeScanCog:
                     except Exception as e:
                         saved_path = None
                     
-                    # Thread-safe append
+                    # thread-safe append
                     self.scanner.add_extracted_image({
                         'file': rel_path,
                         'line': line_no,
                         'type': image_type,
                         'size': len(binary_data),
                         'saved_path': saved_path,
-                        'data': binary_data[:100]  # Store first 100 bytes for reference
+                        'data': binary_data[:100]  # store first 100 bytes for reference
                     })
                     
-                    # Don't log during scan to avoid cluttering output - will show summary later
-                    # The images are saved and metadata is stored for false positive filtering
+                    # don't log during scan to avoid cluttering output - will show summary later
+                    # the images are saved and metadata is stored for false positive filtering
                     
             except Exception:
                 continue
 
     def _scan_xor(self, content, rel_path):
         """
-        Optimized XOR scanning - only analyze strings/arrays longer than 32 chars.
+        optimized XOR scanning - only analyze strings/arrays longer than 32 chars.
         Less false positives, faster scanning.
         """
-        # Hex strings (e.g., 0x41, 0x42...)
+        # hex strings (e.g., 0x41, 0x42...)
         hex_blobs = re.findall(r'(?:0x[0-9a-fA-F]{2},\s*){16,}', content)
         
-        # Long String literals (potential payloads)
-        # Refined regex to capture content inside quotes more accurately
+        # long String literals (potential payloads)
+        # refined regex to capture content inside quotes more accurately
         long_strs = re.findall(r'"([^"]{64,})"', content)
         
         candidates = []
@@ -450,53 +582,53 @@ class CodeScanCog:
                 clean = blob.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '')
                 candidates.append(binascii.unhexlify(clean))
             except (binascii.Error, ValueError):
-                pass  # Expected hex parsing errors
+                pass  # expected hex parsing errors
             except Exception as e:
-                # Log unexpected errors
+                # log unexpected errors
                 if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
                     UI.log(f"  [dim red]Error in XOR scan for {rel_path}: {type(e).__name__}[/dim red]")
                 pass
                 
         for s in long_strs:
-            # Skip strings that are mostly whitespace or code delimiters
+            # skip strings that are mostly whitespace or code delimiters
             whitespace_delim_count = sum(1 for c in s if c.isspace() or c in '{;}')
-            if whitespace_delim_count / len(s) > 0.3:  # More than 30% whitespace/delimiters
+            if whitespace_delim_count / len(s) > 0.3:  # more than 30% whitespace/delimiters
                 continue
             
-            # Only analyze if it looks like garbage (high entropy or weird chars)
+            # only analyze if it looks like garbage (high entropy or weird chars)
             if any(ord(c) > 127 for c in s) or calculate_entropy(s) > 3.5:
                 candidates.append(s)
             
         for candidate in candidates:
             results = xor_brute(candidate)
             if results:
-                # We found something that decodes to text
+                # we found something that decodes to text
                 # Only report if the *decoded* text looks suspicious
                 for key, decoded_text in results:
                     suspicious = False
                     
-                    # More strict keyword check - must contain multiple suspicious indicators
+                    # more strict keyword check - must contain multiple suspicious indicators
                     decoded_lower = decoded_text.lower()
                     suspicious_keywords = ['http', 'cmd', 'powershell', 'exec', 'system', 'download', 'upload', 
                                           'invoke', 'iwr', 'curl', 'wget', 'base64', 'encoded', 'shell', 
                                           'process', 'inject', 'payload', 'malware', 'trojan', 'virus']
                     
-                    # Count how many suspicious keywords are found
+                    # count how many suspicious keywords are found
                     keyword_count = sum(1 for kw in suspicious_keywords if kw in decoded_lower)
                     
-                    # Require at least 2 suspicious keywords, or one very high-risk keyword
+                    # require at least 2 suspicious keywords, or one very high-risk keyword
                     high_risk_keywords = ['powershell', 'invoke', 'download', 'upload', 'payload', 'inject']
                     has_high_risk = any(kw in decoded_lower for kw in high_risk_keywords)
                     
                     if keyword_count >= 2 or has_high_risk:
                         suspicious = True
                     
-                    # Also check if it looks like a command or URL
+                    # also check if it looks like a command or URL
                     if not suspicious:
-                        # Check if decoded text looks like a command (starts with common command prefixes)
+                        # check if decoded text looks like a command (starts with common command prefixes)
                         if any(decoded_lower.startswith(prefix) for prefix in ['cmd', 'powershell', 'start', 'run']):
                             suspicious = True
-                        # Check if it's a URL
+                        # check if it's a URL
                         elif decoded_lower.startswith('http://') or decoded_lower.startswith('https://'):
                             suspicious = True
                     
@@ -510,4 +642,4 @@ class CodeScanCog:
                             score=5,
                             severity="HIGH"
                         ))
-                        return  # Stop after first valid hit per candidate
+                        return  # stop after first valid hit per candidate
