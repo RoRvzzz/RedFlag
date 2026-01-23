@@ -1,3 +1,4 @@
+
 # RedFlag
 
 ![Python](https://img.shields.io/badge/Python-3.12%2B-FF0000?style=for-the-badge&logo=python&logoColor=white)
@@ -8,62 +9,64 @@
 
 [![Discord](https://img.shields.io/badge/Discord-FF0000?style=for-the-badge&logo=open-source-initiative&logoColor=white)](https://discord.gg/macrostack)
 
-
 **RedFlag** is a static analysis tool designed to flag risky patterns in C++ projects, Visual Studio solutions, and build systems.
 
-Rather than claiming to "understand" code behavior, RedFlag acts as an advanced grep-tool that scans for **known dangerous signatures**, **suspicious API combinations**, and **obfuscation techniques**. It aggregates these static indicators into a weighted risk score, helping ~~developers and researchers~~ pasters quickly identify "Red Flags" in third-party code that warrant manual review.
+Rather than claiming to "understand" code behavior, RedFlag acts as an advanced heuristic engine that scans for **known dangerous signatures**, **suspicious API combinations**, **obfuscation techniques**, and **build pipeline attacks**. It aggregates these static indicators into a weighted risk score, helping developers and researchers quickly identify "Red Flags" in third-party code that warrant manual review.
 
 ![Table of Contents](https://img.shields.io/badge/00-Table_of_Contents-000000?style=flat-square)
 
 - [Why RedFlag?](#why-redflag)
-- [Features](#features)
+- [New Features](#features)
 - [Installation](#installation)
-- [How to Use](#how-to-use)
+- [Usage & CLI](#usage--cli)
+- [Configuration](#configuration)
 - [How it Works](#how-it-works)
 - [Screenshots](#screenshots)
-- [Contributing](#contributing)
 - [License](#license)
 
 ---
 
 ![Why RedFlag](https://img.shields.io/badge/01-Why_RedFlag%3F-b91c1c?style=for-the-badge&logo=help&logoColor=white)
 
-When cloning repositories or inheriting legacy C++ projects, manual auditing is time-consuming. A project might look clean in the `.cpp` files but execute a reverse shell via a `PreBuildEvent` in the `.vcxproj` file.
+When cloning repositories or inheriting legacy C++ projects, manual auditing is time-consuming. A project might look clean in the `.cpp` files but execute a reverse shell via a `PreBuildEvent` in the `.vcxproj` file, or hide a payload in a concatenated string.
 
 **RedFlag solves this by:**
 
-1.  ![Scanning](https://img.shields.io/badge/SCANNING-Build_Systems-black?style=flat-square&color=333) Parsing `.vcxproj` files to find command-line executions hidden in Pre/Post build events.
-2.  ![Heuristics](https://img.shields.io/badge/ANALYSIS-Weighted_Scoring-black?style=flat-square&color=333) Using context-aware regex (e.g., flagging Crypto APIs only when used near Network APIs).
-3.  ![Detection](https://img.shields.io/badge/DETECTION-Entropy_Check-black?style=flat-square&color=333) extracting and decoding Base64 blobs to check for high-entropy strings often associated with shellcode.
+1.  ![Scanning](https://img.shields.io/badge/SCANNING-Build_Systems-black?style=flat-square&color=333) Parsing `.vcxproj` files to find command-line executions hidden in Pre/Post build events and linked libraries.
+2.  ![Heuristics](https://img.shields.io/badge/ANALYSIS-Anti--Evasion-black?style=flat-square&color=333) Normalizing strings and macros to detect obfuscated API calls (e.g., `system("c" "md.exe")`).
+3.  ![Detection](https://img.shields.io/badge/DETECTION-Entropy_Check-black?style=flat-square&color=333) Extracting and decoding Base64/XOR blobs to check for high-entropy strings often associated with shellcode.
 
 ---
 
 ![Features](https://img.shields.io/badge/02-Features-b91c1c?style=for-the-badge&logo=star&logoColor=white)
 
-*   ![Build](https://img.shields.io/badge/Target-Build_Events-red)
-    Detects `PowerShell`, `cmd.exe`, `curl`, and `wget` commands buried in Visual Studio build events.
+### Analysis Engine
+*   **Build Event Scanning:** Detects `PowerShell`, `cmd.exe`, `curl`, and `wget` commands buried in Visual Studio XML configuration files.
+*   **Dependency Scanning:** Flags suspicious linked libraries (e.g., `wininet.lib`, `urlmon.lib`) even if they aren't explicitly called in the source code.
+*   **Anti-Evasion Normalization:**
+    *   Merges concatenated C++ strings (`"A" "B"` → `"AB"`).
+    *   Strips comments within logic to expose hidden commands.
+    *   Detects API aliasing via `#define` (e.g., `#define RUN system`).
+*   **Heuristic XOR & Entropy:**
+    *   Brute-forces XORed strings to find hidden URLs or payloads.
+    *   Context-aware entropy analysis (distinguishes between random assets and encrypted shellcode).
 
-*   ![Patterns](https://img.shields.io/badge/Target-API_Signatures-red)
-    Scans for specific API categories using regex signatures:
-    *   ![Exec](https://img.shields.io/badge/TYPE-Execution-gray) `ShellExecute`, `CreateProcess`, `system()`
-    *   ![Mem](https://img.shields.io/badge/TYPE-Memory-gray) `VirtualAlloc`, `ReflectiveLoader`, `WriteProcessMemory`
-    *   ![Net](https://img.shields.io/badge/TYPE-Network-gray) `URLDownloadToFile`, `socket`, `InternetOpen`
-    *   ![Crypto](https://img.shields.io/badge/TYPE-Crypto-gray) `CryptEncrypt`, `Xor`, `FromBase64String`
+### Pattern Matching
+*   **Execution:** `ShellExecute`, `CreateProcess`, `system()`
+*   **Memory:** `VirtualAlloc`, `ReflectiveLoader`, `WriteProcessMemory`
+*   **Network:** `URLDownloadToFile`, `socket`, `InternetOpen`
+*   **Crypto:** `CryptEncrypt`, `Xor`, `FromBase64String`
 
-*   ![Entropy](https://img.shields.io/badge/Target-Entropy_Analysis-red)
-    Identifies high-entropy strings and Base64 encoded blobs that statistically resemble encrypted payloads.
-
-*   ![Risk](https://img.shields.io/badge/Target-Risk_Scoring-red)
-    Assigns a severity level (LOW, MEDIUM, HIGH, CRITICAL) based on the accumulation of "bad" points.
-
-*   ![UI](https://img.shields.io/badge/Target-Rich_UI-red)
-    Uses the `rich` library for formatted tables, progress bars, and colored output.
+### Operational
+*   **Review Mode:** Interactive CLI to triage findings and open files immediately.
+*   **CI/CD Ready:** Export results to JSON and exit with error codes if Critical/High threats are found.
+*   **Rich UI:** Formatted tables, progress bars, and colored severity indicators.
 
 ---
 
 ![Installation](https://img.shields.io/badge/03-Installation-b91c1c?style=for-the-badge&logo=pypi&logoColor=white)
 
-You need **Python 3** installed on your machine.
+You need **Python 3.7+** installed on your machine.
 
 **1. Clone the repository:**
 ```bash
@@ -72,43 +75,90 @@ cd redflag
 ```
 
 **2. Install dependencies:**
-For the best visual experience, install the `rich` library. The tool will still work without it, but the output will be plain text.
 ```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-![How To Use](https://img.shields.io/badge/04-How_To_Use-b91c1c?style=for-the-badge&logo=terminal&logoColor=white)
+![Usage](https://img.shields.io/badge/04-Usage_&_CLI-b91c1c?style=for-the-badge&logo=terminal&logoColor=white)
 
-You can run RedFlag against a single file or an entire directory (like a Visual Studio project folder).
-
-![Mode](https://img.shields.io/badge/Mode-Basic_Usage-black?style=flat-square)
+### Basic Scan
+Run against a single file or directory.
 ```bash
-python run.py "C:\Path\To\Suspicious\Project"
+python run.py "C:\Path\To\Project"
 ```
 
-![Mode](https://img.shields.io/badge/Mode-Interactive-black?style=flat-square)
-If you run the script without arguments, it will prompt you for the path:
+### Interactive Review Mode 
+Launch a post-scan interactive session to filter results and open files in your default editor.
 ```bash
-python run.py
+python run.py "C:\Path\To\Project" --review
 ```
+
+### CI/CD & Automation 
+Generate a machine-readable report. If High or Critical findings are detected, the script exits with code `1` (failure), otherwise `0` (success).
+```bash
+python run.py "C:\Path\To\Project" --json results.json
+```
+
+### Options
+| Flag | Description |
+| :--- | :--- |
+| `--review` | Enter interactive mode after scanning to triage findings. |
+| `--json <file>` | Export results to a JSON file. |
+| `--no-definitions` | Hide technical definitions in the console output. |
+| `--auto-update` | Check for and install updates automatically. |
+| `--verbose` | Show detailed error logs (useful for debugging). |
 
 ---
 
-![How It Works](https://img.shields.io/badge/05-How_It_Works-b91c1c?style=for-the-badge&logo=gears&logoColor=white)
+![Configuration](https://img.shields.io/badge/05-Configuration-b91c1c?style=for-the-badge&logo=json&logoColor=white)
+
+RedFlag supports project-specific configuration. Place a file named `.redflag` (JSON format) in the root of the target directory to customize the scan.
+
+**Example `.redflag` content:**
+```json
+{
+  "ignore_paths": [
+    "vendor/third_party_lib/",
+    "tests/data/"
+  ],
+  "ignore_rules": [
+    "Mismatched File Extension"
+  ],
+  "custom_rules": [
+    {
+      "category": "SECRETS",
+      "pattern": "AKIA[0-9A-Z]{16}",
+      "score": 10,
+      "description": "AWS Access Key ID Detected"
+    }
+  ]
+}
+```
+*See `redflag.example.json` in the repository for a full template.*
+
+---
+
+![How It Works](https://img.shields.io/badge/06-How_It_Works-b91c1c?style=for-the-badge&logo=gears&logoColor=white)
 
 RedFlag performs analysis in 5 steps:
 
-1.  ![Step 1](https://img.shields.io/badge/1-Structure_Verification-374151) Identifies if the target is a VS Project, Make project, or single file.
-2.  ![Step 2](https://img.shields.io/badge/2-Build_File_Scan-374151) Parses XML in `.vcxproj` files to find command-line executions in build events.
-3.  ![Step 3](https://img.shields.io/badge/3-Source_Scan-374151) Regex-based scanning of source files (ignoring binary/library files) for suspicious API calls.
-4.  ![Step 4](https://img.shields.io/badge/4-Aggregation-374151) Sums up risk points if multiple dangerous categories (e.g., Crypto + Network) appear in the same file.
-5.  ![Step 5](https://img.shields.io/badge/5-Verdict-b91c1c) Calculates a total score and provides a final verdict (CLEAN to CRITICAL).
+1.  **Project Identity:** Detects if the target is a VS Solution, Make project, or single file to adjust scanning strategies.
+2.  **Build Systems:** Parses `.vcxproj` and `.sln` files to identify command-line executions (PreBuild/PostBuild) and linked binary dependencies.
+3.  **Normalization & Pre-processing:**
+    *   Merges adjacent strings.
+    *   Resolves macros.
+    *   Strips comments to prevent evasion.
+4.  **Deep Scan:**
+    *   Runs regex signatures against normalized code.
+    *   Extracts arrays for Entropy/Image analysis.
+    *   Brute-forces XOR blobs.
+5.  **Verdict:** Aggregates risk scores. If a file contains multiple correlated indicators (e.g., Obfuscation + Network + Execution), it generates a behavioral "High Confidence" finding.
 
 ---
 
-![Screenshots](https://img.shields.io/badge/06-Screenshots-b91c1c?style=for-the-badge&logo=google-photos&logoColor=white)
+![Screenshots](https://img.shields.io/badge/07-Screenshots-b91c1c?style=for-the-badge&logo=google-photos&logoColor=white)
 
 <p align="center">
   <img src="RedFlag/assets/RedFlag.png" alt="RedFlag Logo" width="500">
@@ -121,7 +171,8 @@ RedFlag performs analysis in 5 steps:
 
 ![Disclaimer](https://img.shields.io/badge/WARNING-Disclaimer-orange?style=for-the-badge&logo=alert&logoColor=white)
 
-This tool is still very innaccurate and only meant to be a first measure before a manual check, although soon it will be good enough to check for people who don't know C++. Currently this only detects basic vulns.
+**RedFlag is a heuristic static analysis tool.**
+While significantly improved with context-aware engines, it may still produce false positives on complex game engines or obfuscated legitimate code. It is designed to prioritize "Red Flags" for human review, not to replace a comprehensive security audit.
 
 ---
 
