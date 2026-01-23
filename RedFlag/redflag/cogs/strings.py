@@ -64,14 +64,28 @@ class StringAnalysisCog:
                 if not re.match(r'https?://[^/]+\.[^/]+', clean_url):
                     continue
                 
-                # Filter out benign domains (check for exact domain match or subdomain)
+                # IMPROVED BENIGN DOMAIN CHECK
                 is_benign = False
-                for domain in BENIGN_DOMAINS:
-                    # Check if domain matches exactly or is a subdomain
-                    if clean_url.startswith(f'http://{domain}') or clean_url.startswith(f'https://{domain}') or \
-                       f'.{domain}' in clean_url or clean_url.endswith(domain):
-                        is_benign = True
-                        break
+                try:
+                    # Parse domain from URL for accurate checking
+                    from urllib.parse import urlparse
+                    parsed = urlparse(clean_url)
+                    hostname = parsed.hostname
+                    
+                    if hostname:
+                        for domain in BENIGN_DOMAINS:
+                            # 1. Exact match: "google.com"
+                            # 2. Subdomain: "api.google.com"
+                            if hostname == domain or hostname.endswith('.' + domain):
+                                is_benign = True
+                                break
+                except:
+                    # Fallback to string matching if parsing fails
+                    for domain in BENIGN_DOMAINS:
+                        if clean_url.startswith(f'http://{domain}') or clean_url.startswith(f'https://{domain}') or \
+                           f'.{domain}' in clean_url or clean_url.endswith(domain):
+                            is_benign = True
+                            break
                 
                 if is_benign:
                     continue

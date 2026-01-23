@@ -46,22 +46,31 @@ class RedFlagScanner:
         
         files_to_scan = []
         
-        def is_ignored_dir(d):
-            return d.lower() in IGNORE_DIRS
+        # Pre-calculate sets for O(1) lookups
+        ignore_dirs_set = {d.lower() for d in IGNORE_DIRS}
+        skip_exts_set = {ext.lower() for ext in SKIP_EXTS}
+        ignore_files_set = {f.lower() for f in IGNORE_FILES}
         
         if self.is_file:
             if include_binaries or not any(self.target_path.lower().endswith(x) for x in SKIP_EXTS):
                 files_to_scan.append(self.target_path)
         else:
             # Single walk through directory tree
-            for root, dirs, files in os.walk(self.target_dir):
-                # Filter ignored directories in-place
-                dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
+            for root, dirs, files in os.walk(self.target_dir, topdown=True):
+                # Modify dirs in-place to skip ignored directories immediately
+                # This prevents os.walk from even entering '.git' or 'node_modules'
+                dirs[:] = [d for d in dirs if d.lower() not in ignore_dirs_set]
                 
                 for f in files:
-                    if f.lower() in [x.lower() for x in IGNORE_FILES]:
+                    f_lower = f.lower()
+                    if f_lower in ignore_files_set:
                         continue
-                    if include_binaries or not any(f.lower().endswith(x) for x in SKIP_EXTS):
+                    
+                    # Optimization: Check extension using os.path.splitext
+                    _, ext = os.path.splitext(f_lower)
+                    is_binary_ext = ext in skip_exts_set
+                    
+                    if include_binaries or not is_binary_ext:
                         files_to_scan.append(os.path.join(root, f))
         
         # Cache the result

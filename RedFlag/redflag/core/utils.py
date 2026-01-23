@@ -62,12 +62,21 @@ class UI:
         return None
 
 def calculate_entropy(data):
+    """Calculate Shannon entropy of data"""
     if not data: return 0
+    # Optimization: Use built-in encoding if data is string
+    if isinstance(data, str):
+        data = data.encode('utf-8', errors='ignore')
+    
+    data_len = len(data)
+    if data_len == 0: return 0
+    
     counts = defaultdict(int)
     for b in data: counts[b] += 1
+    
     entropy = 0
     for count in counts.values():
-        p = count / len(data)
+        p = count / data_len
         entropy -= p * math.log2(p)
     return entropy
 
@@ -79,34 +88,30 @@ def get_severity(score):
 
 def xor_brute(data, min_length=4):
     """
-    Attempt to XOR brute-force a byte string with single-byte keys.
-    Returns a list of (key, decoded_bytes) tuples where the result looks printable.
+    Optimized XOR brute-force using list comprehensions.
+    Returns a list of (key, decoded_text) tuples where the result looks printable.
     """
     results = []
-    # If data is string, convert to bytes (latin1/ascii safe)
+    # If data is string, convert to bytes (latin1 preserves byte values 1:1)
     if isinstance(data, str):
-        try:
-            data = data.encode('latin1')
-        except:
-            return []
+        data = data.encode('latin1', errors='ignore')
             
     if not data or len(data) < min_length:
         return []
 
     for key in range(1, 256):
-        decoded = bytearray(len(data))
-        for i in range(len(data)):
-            decoded[i] = data[i] ^ key
-        
-        # Heuristic: Check if the result is mostly printable text
+        # Optimization: fast XOR using list comprehension
         try:
-            # Try to decode as utf-8 or ascii
-            text = decoded.decode('utf-8')
-            # Check for high ratio of printable chars
-            printable = sum(1 for c in text if c.isprintable())
-            if printable / len(text) > 0.90:
+            decoded_bytes = bytes([b ^ key for b in data])
+            
+            # Fast check: If it contains too many control chars, likely not text
+            # Allow tab (9), newline (10), carriage return (13)
+            non_printable = sum(1 for b in decoded_bytes if (b < 32 and b not in (9, 10, 13)) or b > 126)
+            
+            if non_printable / len(decoded_bytes) < 0.10:  # Allow 10% garbage (lenient)
+                text = decoded_bytes.decode('utf-8', errors='ignore')
                 results.append((key, text))
-        except UnicodeDecodeError:
+        except (ValueError, UnicodeDecodeError):
             continue
             
     return results

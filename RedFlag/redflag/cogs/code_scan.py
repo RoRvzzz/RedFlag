@@ -7,6 +7,9 @@ from ..core.config import IGNORE_DIRS, IGNORE_FILES, SKIP_EXTS, BASE64_REGEX
 from ..core.models import Finding
 from ..core.utils import UI, calculate_entropy, get_severity, xor_brute
 
+# Config
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB limit per file for code scanning
+
 class CodeScanCog:
     def __init__(self, scanner):
         self.scanner = scanner
@@ -53,14 +56,20 @@ class CodeScanCog:
 
     def _scan_single_file(self, path):
         try:
+            # Safety: Skip huge files
+            if os.path.getsize(path) > MAX_FILE_SIZE:
+                return
+            
             rel_base = self.scanner.target_dir if not self.scanner.is_file else os.path.dirname(self.scanner.target_dir)
             rel_path = os.path.relpath(path, rel_base)
             
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
-            # Extract images first (to help filter false positives)
-            self._extract_images(content, rel_path)
+            # 1. Extract Images (Heavy Regex) - Only run if likely to contain images
+            # Only run if "unsigned" or "char" and "{" appear to save CPU
+            if "{" in content and ("char" in content or "byte" in content or "unsigned" in content):
+                self._extract_images(content, rel_path)
             
             # regex scan
             for cat, patterns in self.scanner.compiled_patterns.items():
@@ -190,12 +199,11 @@ class CodeScanCog:
                             severity=get_severity(score)
                         ))
 
-            # base64 scan
-            self._scan_blobs(content, rel_path)
-            
-            # XOR brute force on suspicious byte arrays or strings
-            # Simple heuristic: scan "suspiciously long" continuous strings that aren't base64
-            self._scan_xor(content, rel_path)
+            # 3. Base64 & XOR Scan
+            # Only scan if content length suggests it might hide payloads
+            if len(content) > 100:  # Skip tiny files
+                self._scan_blobs(content, rel_path)
+                self._scan_xor(content, rel_path)
 
         except Exception:
             pass
@@ -345,44 +353,51 @@ class CodeScanCog:
                 continue
 
     def _scan_xor(self, content, rel_path):
-        # look for potential byte arrays or obfuscated strings
-        # heuristic: long hex strings or byte array initializers
+        """
+        Optimized XOR scanning - only analyze strings/arrays longer than 32 chars.
+        Less false positives, faster scanning.
+        """
+        # Hex strings (e.g., 0x41, 0x42...)
+        hex_blobs = re.findall(r'(?:0x[0-9a-fA-F]{2},\s*){16,}', content)
         
-        # hex strings like "4d5a9000..."
-        hex_blobs = re.findall(r'(?:0x[0-9a-fA-F]{2},\s*){10,}', content)
-        # string literals that look random/long
-        long_strs = re.findall(r'"([^"]{50,})"', content)
+        # Long String literals (potential payloads)
+        # Refined regex to capture content inside quotes more accurately
+        long_strs = re.findall(r'"([^"]{64,})"', content)
         
         candidates = []
         
-        # parse hex blobs
         for blob in hex_blobs:
             try:
-                # cleanup: "0x41, 0x42" -> b'AB'
                 clean = blob.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '')
                 candidates.append(binascii.unhexlify(clean))
             except:
                 pass
                 
-        # candidates from strings
         for s in long_strs:
-            candidates.append(s)
+            # Only analyze if it looks like garbage (high entropy or weird chars)
+            if any(ord(c) > 127 for c in s) or calculate_entropy(s) > 3.5:
+                candidates.append(s)
             
         for candidate in candidates:
-            # try xor brute force
             results = xor_brute(candidate)
-            for key, decoded_text in results:
-                # check if decoded text has anything interesting
-                for cat, patterns in self.scanner.compiled_patterns.items():
-                    for pat, s, d in patterns:
-                        if pat.search(decoded_text):
-                            self.scanner.add_finding(Finding(
-                                category="OBFUSCATION",
-                                description=f"XOR Obfuscated Content (Key: {hex(key)}) - Contains {d}",
-                                file=rel_path,
-                                line=0, # hard to track line for complex extractions
-                                context=decoded_text[:100] + "...",
-                                score=5,
-                                severity="HIGH"
-                            ))
-                            return # found a match, stop checking this candidate
+            if results:
+                # We found something that decodes to text
+                # Only report if the *decoded* text looks suspicious
+                for key, decoded_text in results:
+                    suspicious = False
+                    
+                    # Quick keyword check in decoded text
+                    if any(x in decoded_text.lower() for x in ['http', 'cmd', 'powershell', 'exec', 'system']):
+                        suspicious = True
+                    
+                    if suspicious:
+                        self.scanner.add_finding(Finding(
+                            category="OBFUSCATION",
+                            description=f"XOR Obfuscated Content (Key: {hex(key)})",
+                            file=rel_path,
+                            line=0,
+                            context=decoded_text[:100] + "...",
+                            score=5,
+                            severity="HIGH"
+                        ))
+                        return  # Stop after first valid hit per candidate

@@ -35,11 +35,11 @@ $$ |  $$ |\$$$$$$$\ \$$$$$$$ |$$ |      $$ |\$$$$$$$ |\$$$$$$$ | ||
 BANNER = _load_banner()
 
 IGNORE_DIRS = {
-    '.git', '.svn', '.vs', '.vscode', '.idea',
+    '.git', '.svn', '.hg', '.vs', '.vscode', '.idea',
     'build', 'out', 'bin', 'obj', 'node_modules', '__pycache__',
     'artifacts', 'dist', 'target', 'vendor', 'ext', 'external',
-    'x64', 'x86', 'debug', 'release',
-    'libs', 'imgui', 'include'
+    'x64', 'x86', 'debug', 'release', 'venv', 'env',
+    'libs', 'imgui', 'include', 'third_party'
 }
 
 # Files to never scan (the tool itself)
@@ -51,10 +51,19 @@ IGNORE_FILES = {
 
 # Extensions to skip (binaries, images, etc.)
 SKIP_EXTS = {
-    '.exe', '.dll', '.obj', '.pdb', '.idb', '.ilk', '.png', '.jpg', '.ico', '.pdf',
-    '.lib', '.a', '.so', '.dylib', '.exp', # Libraries
-    '.ifc', '.ifcast', '.ipch', '.pch', # C++ artifacts
-    '.suo', '.user', '.filters'
+    # Binaries
+    '.exe', '.dll', '.obj', '.pdb', '.idb', '.ilk', '.sys', '.drv',
+    '.lib', '.a', '.so', '.dylib', '.exp', '.bin', '.hex',
+    # Assets
+    '.png', '.jpg', '.jpeg', '.gif', '.ico', '.pdf', '.webp', '.bmp',
+    '.tiff', '.tga', '.wav', '.mp3', '.mp4', '.avi', '.mov',
+    '.ttf', '.otf', '.woff', '.woff2', '.eot',
+    # Archives
+    '.zip', '.rar', '.7z', '.tar', '.gz',
+    # C++ artifacts
+    '.ifc', '.ifcast', '.ipch', '.pch',
+    # VS Artifacts
+    '.suo', '.user', '.filters', '.aps', '.ncb'
 }
 
 # Benign domains to filter out from URL findings (common legitimate services)
