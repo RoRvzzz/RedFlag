@@ -335,3 +335,76 @@ def auto_update(ask_user=True, prefer_pip=True):
                 return install_update(zip_path, temp_dir)
     
     return False
+
+def apply_pending_update():
+    """
+    Check for and apply any pending updates from the staging directory.
+    This is called on startup to complete updates that were staged but not applied
+    due to Windows file locking.
+    """
+    install_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    update_flag = os.path.join(install_dir, '.redflag_update_pending')
+    
+    if not os.path.exists(update_flag):
+        return False
+    
+    try:
+        # Read staging directory path from flag file
+        with open(update_flag, 'r') as f:
+            staging_dir = f.read().strip()
+        
+        if not os.path.exists(staging_dir):
+            # Staging directory doesn't exist, remove flag
+            os.remove(update_flag)
+            return False
+        
+        UI.log("  [yellow]Applying pending update...[/yellow]")
+        
+        current_redflag = os.path.join(install_dir, 'redflag')
+        current_assets = os.path.join(install_dir, 'assets')
+        staging_redflag = os.path.join(staging_dir, 'redflag')
+        staging_assets = os.path.join(staging_dir, 'assets')
+        
+        # Backup current installation
+        backup_dir = os.path.join(install_dir, 'redflag_backup')
+        if os.path.exists(backup_dir):
+            shutil.rmtree(backup_dir)
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Backup current files
+        if os.path.exists(current_redflag):
+            backup_redflag = os.path.join(backup_dir, 'redflag')
+            shutil.move(current_redflag, backup_redflag)
+        
+        if os.path.exists(current_assets):
+            backup_assets = os.path.join(backup_dir, 'assets')
+            shutil.move(current_assets, backup_assets)
+        
+        # Move staged files to actual location
+        shutil.move(staging_redflag, current_redflag)
+        
+        if os.path.exists(staging_assets):
+            if os.path.exists(current_assets):
+                shutil.rmtree(current_assets)
+            shutil.move(staging_assets, current_assets)
+        
+        # Cleanup staging directory and flag
+        shutil.rmtree(staging_dir)
+        os.remove(update_flag)
+        
+        # Cleanup backup
+        if os.path.exists(backup_dir):
+            shutil.rmtree(backup_dir)
+        
+        UI.log("  [bold green]✓ Update applied successfully![/bold green]")
+        UI.log("  [dim]Please restart RedFlag to use the new version.[/dim]")
+        return True
+        
+    except PermissionError as e:
+        UI.log(f"  [yellow]Could not apply update: {e}[/yellow]")
+        UI.log("  [dim]Update will be applied on next restart.[/dim]")
+        return False
+    except Exception as e:
+        UI.log(f"  [dim]Could not apply pending update: {e}[/dim]")
+        # Don't remove flag if update failed - try again next time
+        return False
