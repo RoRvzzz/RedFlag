@@ -11,9 +11,14 @@ if script_dir not in sys.path:
 from redflag.core.engine import RedFlagScanner
 from redflag.core.config import BANNER
 from redflag.core.utils import UI
-from redflag.core.updater import auto_update, get_current_version
+from redflag.core.updater import auto_update, get_current_version, apply_pending_update
 
 def main():
+    # Check for and apply any pending updates from staging directory
+    try:
+        apply_pending_update()
+    except Exception:
+        pass  # Don't fail if update application fails
     parser = argparse.ArgumentParser(description="RedFlag Malware Analysis")
     parser.add_argument("path", nargs="?", help="Path to project or file")
     parser.add_argument("--skip-update", action="store_true", help="Skip update check")
