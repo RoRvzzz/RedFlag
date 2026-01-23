@@ -1,5 +1,6 @@
 
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urlextract import URLExtract
 from ..core.models import Finding
@@ -62,6 +63,19 @@ class StringAnalysisCog:
             for url in urls:
                 # Basic cleanup
                 clean_url = url.lower().strip()
+                
+                # Validate that it's actually a URL (must start with http:// or https://)
+                if not (clean_url.startswith('http://') or clean_url.startswith('https://')):
+                    continue
+                
+                # Filter out false positives: common C++ member access patterns
+                # Skip if it looks like .Data, .ID, .TextA, etc. (these aren't URLs)
+                if re.match(r'^[a-z_][a-z0-9_]*\.(data|id|texta|textw|path|buffer)', clean_url, re.IGNORECASE):
+                    continue
+                
+                # Must have a valid domain structure (at least one dot after http://)
+                if not re.match(r'https?://[^/]+\.[^/]+', clean_url):
+                    continue
                 
                 # Filter out benign domains (check for exact domain match or subdomain)
                 is_benign = False
