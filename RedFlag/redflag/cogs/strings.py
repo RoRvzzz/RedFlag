@@ -127,5 +127,11 @@ class StringAnalysisCog:
                     severity=severity
                 ))
 
-        except Exception:
+        except (UnicodeError, OSError, PermissionError) as e:
+            # Expected file read errors - silently skip
+            pass
+        except Exception as e:
+            # Log unexpected errors for debugging
+            if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
+                UI.log(f"  [dim red]Error scanning strings in {rel_path}: {type(e).__name__}[/dim red]")
             pass

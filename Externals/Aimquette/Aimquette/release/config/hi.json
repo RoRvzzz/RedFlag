@@ -1,0 +1,306 @@
+{
+  "combat": {
+    "aimbot": true,
+    "aimbottype": 1,
+    "aimpart": 0,
+    "airpart": 0,
+    "airpart_enabled": false,
+    "arsenal_flick_fix": false,
+    "cam_sensitivity": 1.0,
+    "camlock_shake": false,
+    "camlock_shake_x": 2.0,
+    "camlock_shake_y": 2.0,
+    "camlock_shake_z": 2.0,
+    "closestpartsilent": 0,
+    "crew_check": false,
+    "deadzone": false,
+    "deadzonex": 0.0,
+    "deadzoney": 0.0,
+    "delay": 0.0,
+    "drawfov": true,
+    "drawsfov": false,
+    "fovcolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "fovsize": 192.6999969482422,
+    "grabbedcheck": false,
+    "hitchance": 100,
+    "ignore_parts_camera": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ignore_parts_mouse": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "keybinds": {
+      "aimbotkeybind": {
+        "key": 6,
+        "type": 1
+      },
+      "silentaimkeybind": {
+        "key": 0,
+        "type": 1
+      },
+      "triggerbotkeybind": {
+        "key": 0,
+        "type": 1
+      }
+    },
+    "mouse_sensitivity": 1.0,
+    "nosleep_aimbot": false,
+    "predictions": false,
+    "predictionsx": 5.0,
+    "predictionsy": 5.0,
+    "sensitivity_enabled": true,
+    "sfovcolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "sfovsize": 50.0,
+    "silentaim": false,
+    "silentaimpart": 0,
+    "silentpredictions": false,
+    "silentpredictionsx": 5.0,
+    "silentpredictionsy": 5.0,
+    "smoothing": true,
+    "smoothingstyle": 1,
+    "smoothingx": 33.20000076293945,
+    "smoothingy": 33.0,
+    "spoofmouse": true,
+    "stickyaim": true,
+    "stickyaimsilent": true,
+    "target_method": 0,
+    "teamcheck": false,
+    "triggerbot": false,
+    "unlockondeath": false,
+    "usefov": false,
+    "usesfov": false
+  },
+  "misc": {
+    "autoreload": false,
+    "bikefly": false,
+    "desync_visualizer": false,
+    "desync_viz_color": [
+      1.0,
+      0.0,
+      0.0,
+      0.800000011920929
+    ],
+    "explorer": false,
+    "flight": true,
+    "flighttype": 0,
+    "flightvalue": 77.5999984741211,
+    "keybinds_data": {
+      "flightkeybind": {
+        "key": 81,
+        "type": 1
+      },
+      "speedkeybind": {
+        "key": 0,
+        "type": 1
+      },
+      "spin360keybind": {
+        "key": 0,
+        "type": 1
+      }
+    },
+    "npc_check": false,
+    "overlay_fps": 60.0,
+    "override_overlay_fps": false,
+    "playerlist": true,
+    "speed": false,
+    "speedtype": 0,
+    "speedvalue": 16.0,
+    "spin360": false,
+    "spin360speed": 5.0,
+    "streamproof": true,
+    "targethud": true,
+    "vsync": true
+  },
+  "visuals": {
+    "box_gradient": false,
+    "box_gradient_color1": [
+      0.800000011920929,
+      0.20000000298023224,
+      0.800000011920929,
+      0.5
+    ],
+    "box_gradient_color2": [
+      0.20000000298023224,
+      0.800000011920929,
+      0.800000011920929,
+      0.5
+    ],
+    "box_gradient_rotation": false,
+    "box_gradient_rotation_speed": 0.25,
+    "boxcolors": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "boxes": true,
+    "boxfillcolor": [
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.30000001192092896
+    ],
+    "boxtype": 0,
+    "chinahat": true,
+    "chinahat_color": [
+      1.0,
+      0.8429999947547913,
+      0.0,
+      1.0
+    ],
+    "chinahat_target_only": false,
+    "distance": false,
+    "distancecolor": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "fog": false,
+    "fog_color": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "fog_end": 1000.0,
+    "fog_glow": false,
+    "fog_glow_color": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "fog_glow_intensity": 1.0,
+    "fog_start": 0.0,
+    "healthbar": true,
+    "healthbarcolor": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "healthbarcolor1": [
+      0.0,
+      1.0,
+      0.0,
+      1.0
+    ],
+    "healthtext": false,
+    "lighting_ambient": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "lighting_brightness": 1.0,
+    "lighting_color_correction": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "lighting_contrast": 1.0,
+    "lighting_modifications": false,
+    "lighting_shadows": true,
+    "lockedindicator": false,
+    "name": false,
+    "namecolor": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "nametype": 0,
+    "overlay": {
+      "box": [
+        0,
+        0,
+        0
+      ],
+      "healthbar": [
+        0,
+        0,
+        0
+      ],
+      "skeleton": [
+        0,
+        0
+      ]
+    },
+    "rainbow_fog": false,
+    "rainbow_fog_speed": 1.0,
+    "skeletons": false,
+    "skeletonscolor": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "sonar": false,
+    "sonar_dot_color": [
+      1.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "sonar_range": 50.0,
+    "sonar_thickness": 1.0,
+    "sonarcolor": [
+      1.0,
+      1.0,
+      1.0,
+      0.800000011920929
+    ],
+    "toolesp": false,
+    "toolespcolor": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "tracers": false,
+    "tracers_glow": false,
+    "tracerscolor": [
+      0.3959999978542328,
+      0.41999998688697815,
+      0.722000002861023,
+      1.0
+    ],
+    "tracerstype": 0,
+    "visuals": true,
+    "workspace_anchored_modifier": false,
+    "workspace_anchored_value": false,
+    "workspace_cancollide_modifier": false,
+    "workspace_cancollide_value": true,
+    "workspace_show_position": false,
+    "workspace_show_size": false,
+    "workspace_show_velocity": false,
+    "workspace_transparency": 0.0,
+    "workspace_transparency_modifier": false,
+    "workspace_viewer": false
+  }
+}

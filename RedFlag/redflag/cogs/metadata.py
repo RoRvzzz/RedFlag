@@ -80,7 +80,13 @@ class MetadataScanCog:
                     severity="LOW"
                 ))
 
-        except Exception:
+        except (OSError, PermissionError, UnicodeError) as e:
+            # Expected file access errors - silently skip
+            pass
+        except Exception as e:
+            # Log unexpected errors for debugging
+            if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
+                UI.log(f"  [dim red]Error extracting metadata from {rel_path}: {type(e).__name__}[/dim red]")
             pass
 
     def _get_file_hash(self, path):
@@ -90,5 +96,5 @@ class MetadataScanCog:
                 for chunk in iter(lambda: f.read(4096), b""):
                     sha256.update(chunk)
             return sha256.hexdigest()
-        except:
+        except (OSError, PermissionError, IOError):
             return "ERROR"

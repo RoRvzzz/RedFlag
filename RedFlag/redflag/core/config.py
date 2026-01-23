@@ -89,7 +89,7 @@ PATTERNS = {
         (r'powershell', 4, 'PowerShell Execution'),
         (r'ShellExecute(A|W)?\(.*?\b(http|https|explorer)\b', 1, 'Safe Shell Execution (URL/Explorer)'), # Lower score for common UI actions
         (r'ShellExecute(A|W)?(?!\(.*?\b(http|https|explorer)\b)', 3, 'API Shell Execution'),
-        (r'\bstd::system\(|(?<![a-zA-Z_])system\s*\(', 3, 'System Command'), # Match system() calls (lowercase only)
+        (r'\bstd::system\(|(?<![a-zA-Z_])system\s*\(', 3, 'System Command'), # Match system() calls, avoid snake_case
         (r'CreateProcess', 3, 'API Process Creation'),
         (r'WinExec', 3, 'Legacy Execution API'),
     ],

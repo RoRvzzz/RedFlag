@@ -88,7 +88,7 @@ def get_severity(score):
 
 def xor_brute(data, min_length=4):
     """
-    Optimized XOR brute-force using list comprehensions.
+    Optimized XOR brute-force using translation tables for speed.
     Returns a list of (key, decoded_text) tuples where the result looks printable.
     """
     results = []
@@ -100,16 +100,33 @@ def xor_brute(data, min_length=4):
         return []
 
     for key in range(1, 256):
-        # Optimization: fast XOR using list comprehension
         try:
-            decoded_bytes = bytes([b ^ key for b in data])
+            # Optimization: Use translation table - O(1) lookup inside C implementation
+            # Create translation table: map each byte to itself XOR key
+            trans_table = bytes.maketrans(
+                bytes(range(256)),
+                bytes(i ^ key for i in range(256))
+            )
+            decoded_bytes = data.translate(trans_table)
             
+            # Stricter validation: Require alphanumeric characters, not just printable
             # Fast check: If it contains too many control chars, likely not text
             # Allow tab (9), newline (10), carriage return (13)
             non_printable = sum(1 for b in decoded_bytes if (b < 32 and b not in (9, 10, 13)) or b > 126)
             
-            if non_printable / len(decoded_bytes) < 0.10:  # Allow 10% garbage (lenient)
+            if non_printable / len(decoded_bytes) < 0.08:  # Stricter: 8% threshold (was 10%)
                 text = decoded_bytes.decode('utf-8', errors='ignore')
+                
+                # Additional check: Must contain alphanumeric characters (not just symbols)
+                alnum_count = sum(1 for c in text if c.isalnum())
+                if alnum_count / len(text) < 0.3:  # At least 30% alphanumeric
+                    continue
+                
+                # Skip if it's mostly whitespace or code delimiters
+                whitespace_delim_count = sum(1 for c in text if c.isspace() or c in '{;}')
+                if whitespace_delim_count / len(text) > 0.5:  # More than 50% whitespace/delimiters
+                    continue
+                
                 results.append((key, text))
         except (ValueError, UnicodeDecodeError):
             continue

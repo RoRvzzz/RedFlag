@@ -83,10 +83,33 @@ class ProjectIdentityCog:
                 matches = re.findall(r'Project\("{.*?}"\)\s*=\s*".*?",\s*"(.*?)",', content)
                 
                 for match in matches:
-                    # Normalize path separators
-                    rel_proj_path = match.replace('\\', os.sep)
+                    # Normalize path separators and handle Windows backslashes
+                    rel_proj_path = match.replace('\\', os.sep).replace('/', os.sep)
+                    
+                    # Security: Prevent path traversal attacks
+                    if '..' in rel_proj_path:
+                        # Skip paths with .. traversal
+                        continue
+                    
+                    # Sanitize: Remove any leading/trailing whitespace and normalize
+                    rel_proj_path = rel_proj_path.strip()
+                    
                     # Join relative to the .sln file's directory
                     full_proj_path = os.path.normpath(os.path.join(sln_dir, rel_proj_path))
+                    
+                    # Security: Ensure resolved path is still within solution directory
+                    try:
+                        # Resolve any remaining .. or . components
+                        full_proj_path = os.path.abspath(full_proj_path)
+                        sln_dir_abs = os.path.abspath(sln_dir)
+                        
+                        # Check that the resolved path is within or at the solution directory
+                        if not full_proj_path.startswith(sln_dir_abs):
+                            # Path traversal detected, skip
+                            continue
+                    except (OSError, ValueError):
+                        # Invalid path, skip
+                        continue
                     
                     if os.path.exists(full_proj_path) and full_proj_path.endswith('.vcxproj'):
                         if full_proj_path not in self.scanner.project_files:

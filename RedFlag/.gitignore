@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-__init__.py
+
 .pyc
 
 # Environment

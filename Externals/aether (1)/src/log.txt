@@ -1,0 +1,161 @@
+[INFO] Directory Created, Or Exist
+[INFO] Initialization started.
+[INFO] Finding Roblox process...
+[INFO] Found Process ID: : 23676
+[INFO] Opening process handle...
+[INFO] Fetching base address...
+[INFO] Base Address: : 1344667648
+[INFO] Acquiring global variables...
+[INFO] Initializing...
+[INFO] Found Process ID:: 23676
+[INFO] Base Address:: 1344667648
+[INFO] Lighting:: 0
+[INFO] Game ID:: 80461030
+[PLAYERS] Local Player Name: desync
+[INFO] WalkSpeed:: 0
+[INFO] JumpPower:: 0
+[INFO] HipHeight:: 0
+[INFO] Tests Assigned. Calling plrdata()...
+[INFO] [PlrData] Starting player data analysis...
+[INFO] [PlrData] Player service child count:: 4
+[INFO] [PlrData] Reserved space in playersVal vector.
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Fetched Player Value:: 1437982368
+[INFO] [PlrData] Total fetched player values:: 30
+[INFO] [PlrData] Analyzing frequency of fetched player values...
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 1
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 2
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 3
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 4
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 5
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 6
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 7
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 8
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 9
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 10
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 11
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 12
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 13
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 14
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 15
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 16
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 17
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 18
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 19
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 20
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 21
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 22
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 23
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 24
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 25
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 26
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 27
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 28
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 29
+[INFO] [PlrData] Incremented count for value:: 1437982368
+[INFO] [PlrData] New Most Frequent Value:: 1437982368
+[INFO] [PlrData] With Count:: 30
+[INFO] [PlrData] Frequency analysis complete.
+[INFO] [PlrData] Final Most Frequent Player Value:: 1437982368
+[END] Completed.
+[INFO] Validating global variables...
+[INFO] Validating all global variables...
+[WARNING] DataModelPTR Invalid
+[WARNING] Mouse Service Invalid
+[WARNING] Lighting Invalid
+[INFO] Total Valid Parts:: 0
+[CRITICAL] Expected >= 16 Parts, Found Less. Check Character Integrity or Contact Support.
+[END] Check Complete.
+[CRITICAL] Exception in CheckIfGlobalVariablesInvalid.
+[INFO] Launching feature threads...
+[CRITICAL] Failed to launch Aimbot thread.
+[CRITICAL] Failed to launch Silent Aim thread.
+[CRITICAL] Failed to launch TriggerBot thread.
+[INFO] Render thread launched.
+[INFO] Starting render...

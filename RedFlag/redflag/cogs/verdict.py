@@ -165,3 +165,65 @@ class VerdictCog:
                 count += 1
                 if count < 10:  # Add spacing between findings (except last one)
                     UI.log("")
+
+def export_to_json(scanner, output_file):
+    """Export scan results to JSON format"""
+    import json
+    from datetime import datetime
+    
+    # Calculate summary statistics
+    total_score = sum(f.score for f in scanner.findings if f.severity != "INFO")
+    severities = [f.severity for f in scanner.findings]
+    max_severity = "CLEAN"
+    if "CRITICAL" in severities: max_severity = "CRITICAL"
+    elif "HIGH" in severities: max_severity = "HIGH"
+    elif "MEDIUM" in severities: max_severity = "MEDIUM"
+    elif "LOW" in severities: max_severity = "LOW"
+    elif "INFO" in severities: max_severity = "INFO"
+    
+    # Serialize findings
+    findings_data = []
+    for f in scanner.findings:
+        finding_dict = {
+            'category': f.category,
+            'description': f.description,
+            'file': f.file,
+            'line': f.line,
+            'context': f.context,
+            'score': f.score,
+            'severity': f.severity,
+            'confidence': getattr(f, 'confidence', 'MEDIUM'),
+            'metadata': f.metadata or {}
+        }
+        findings_data.append(finding_dict)
+    
+    # Build report structure
+    report = {
+        'version': '1.0',
+        'timestamp': datetime.now().isoformat(),
+        'target': scanner.target_path,
+        'project_type': scanner.project_type,
+        'summary': {
+            'risk_level': max_severity,
+            'total_threat_score': total_score,
+            'total_findings': len(scanner.findings),
+            'findings_by_severity': {
+                'CRITICAL': len([f for f in scanner.findings if f.severity == 'CRITICAL']),
+                'HIGH': len([f for f in scanner.findings if f.severity == 'HIGH']),
+                'MEDIUM': len([f for f in scanner.findings if f.severity == 'MEDIUM']),
+                'LOW': len([f for f in scanner.findings if f.severity == 'LOW']),
+                'INFO': len([f for f in scanner.findings if f.severity == 'INFO'])
+            }
+        },
+        'findings': findings_data,
+        'extracted_images': scanner.extracted_images if hasattr(scanner, 'extracted_images') else []
+    }
+    
+    # Write to file
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        UI.log(f"  [red]Failed to export JSON: {e}[/red]")
+        return False

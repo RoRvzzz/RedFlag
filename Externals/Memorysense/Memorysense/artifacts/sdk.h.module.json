@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "C:\\Users\\harpset\\Downloads\\illsueanysourcestealers\\SueHeckSense\\Memorysense\\artifacts\\sdk.h.obj",
+            "outputs": [
+                "C:\\Users\\harpset\\Downloads\\illsueanysourcestealers\\SueHeckSense\\Memorysense\\artifacts\\vc143.pdb",
+                "C:\\Users\\harpset\\Downloads\\illsueanysourcestealers\\SueHeckSense\\Memorysense\\artifacts\\",
+                "C:\\Users\\harpset\\Downloads\\illsueanysourcestealers\\SueHeckSense\\Memorysense\\artifacts\\sdk.h.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "src\\sdk\\sdk.h",
+                    "source-path": "c:\\users\\harpset\\downloads\\illsueanysourcestealers\\suehecksense\\memorysense\\memorysense\\src\\sdk\\sdk.h",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

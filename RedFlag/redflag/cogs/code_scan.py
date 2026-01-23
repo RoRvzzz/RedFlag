@@ -83,22 +83,54 @@ class CodeScanCog:
                         line_no = content[:match.start()].count('\n') + 1
                         ctx = content[max(0, match.start()-50):min(len(content), match.end()+50)].replace('\n', ' ')
                         
-                        # Filter out benign stack strings (embedded assets)
+                        # Contextual "Stack String" filtering using entropy analysis
                         if cat == 'OBFUSCATION' and 'Stack String' in desc:
                             skip_finding = False
                             
-                            if any(x in ctx.lower() for x in ['font', 'image', 'icon', 'bytes', 'data', 'texture']):
-                                skip_finding = True
-                            elif any(x in rel_path.lower() for x in ['font', 'image', 'icon', 'resource', 'asset', 'protect', 'crypto']):
-                                skip_finding = True
-                            # Check if we've already identified this as a valid image (thread-safe read)
-                            else:
+                            # Try to extract the actual byte array data for entropy analysis
+                            try:
+                                # Extract hex bytes from context: { 0x41, 0x42, ... }
+                                hex_match = re.search(r'\{((?:\s*0x[0-9a-fA-F]{2}\s*,?\s*)+)\}', ctx)
+                                if hex_match:
+                                    hex_data = hex_match.group(1)
+                                    clean_hex = hex_data.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '').replace('\r', '').replace('\t', '')
+                                    if len(clean_hex) >= 20:  # Only analyze if substantial data
+                                        try:
+                                            binary_data = binascii.unhexlify(clean_hex)
+                                            entropy = calculate_entropy(binary_data)
+                                            
+                                            # Entropy-based filtering:
+                                            # < 3.5: English text/code (likely benign)
+                                            # > 7.5: Compressed/Encrypted (suspicious)
+                                            # 4.0-6.0: Lookup table/font map (lower severity)
+                                            
+                                            if entropy < 3.5:
+                                                # Low entropy = likely text/code, skip
+                                                skip_finding = True
+                                            elif 4.0 <= entropy <= 6.0:
+                                                # Medium entropy = likely lookup table/font, reduce severity
+                                                score = max(2, score - 1)  # Reduce by 1, minimum 2
+                                                desc = f"{desc} (Lookup Table/Font - Lower Risk)"
+                                            # entropy > 7.5 keeps original high score
+                                        except (binascii.Error, ValueError):
+                                            pass  # If hex parsing fails, fall through to other checks
+                            except Exception:
+                                pass  # If extraction fails, fall through to other checks
+                            
+                            # Fallback: Check if we've already identified this as a valid image
+                            if not skip_finding:
                                 with self.scanner._lock:
                                     for img_info in self.scanner.extracted_images:
                                         if img_info['file'] == rel_path and abs(img_info['line'] - line_no) < 5:
-                                            # This array was identified as a valid image, suppress the finding
                                             skip_finding = True
                                             break
+                            
+                            # Additional context checks
+                            if not skip_finding:
+                                if any(x in ctx.lower() for x in ['font', 'image', 'icon', 'bytes', 'data', 'texture']):
+                                    skip_finding = True
+                                elif any(x in rel_path.lower() for x in ['font', 'image', 'icon', 'resource', 'asset', 'protect', 'crypto']):
+                                    skip_finding = True
                             
                             if skip_finding:
                                 continue
@@ -288,7 +320,14 @@ class CodeScanCog:
                         severity=get_severity(score)
                     ))
 
-            except Exception:
+            except (UnicodeError, OSError, PermissionError) as e:
+                # Expected file read errors - silently skip
+                pass
+            except Exception as e:
+                # Log internal errors for debugging (but don't crash the scan)
+                # Only log in verbose mode to avoid cluttering output
+                if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
+                    UI.log(f"  [dim red]Error scanning {rel_path}: {type(e).__name__}[/dim red]")
                 pass
 
     def _extract_images(self, content, rel_path):
@@ -410,10 +449,20 @@ class CodeScanCog:
             try:
                 clean = blob.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '')
                 candidates.append(binascii.unhexlify(clean))
-            except:
+            except (binascii.Error, ValueError):
+                pass  # Expected hex parsing errors
+            except Exception as e:
+                # Log unexpected errors
+                if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
+                    UI.log(f"  [dim red]Error in XOR scan for {rel_path}: {type(e).__name__}[/dim red]")
                 pass
                 
         for s in long_strs:
+            # Skip strings that are mostly whitespace or code delimiters
+            whitespace_delim_count = sum(1 for c in s if c.isspace() or c in '{;}')
+            if whitespace_delim_count / len(s) > 0.3:  # More than 30% whitespace/delimiters
+                continue
+            
             # Only analyze if it looks like garbage (high entropy or weird chars)
             if any(ord(c) > 127 for c in s) or calculate_entropy(s) > 3.5:
                 candidates.append(s)

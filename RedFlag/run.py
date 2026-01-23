@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--auto-update", action="store_true", help="Automatically install updates without asking")
     parser.add_argument("--version", action="store_true", help="Show version and exit")
     parser.add_argument("--no-definitions", action="store_true", help="Hide technical definitions in output")
+    parser.add_argument("--json", type=str, metavar="FILE", help="Export results to JSON file")
     args = parser.parse_args()
     
     # Show version and exit
@@ -63,6 +64,12 @@ def main():
         UI.log(f"  [dim]RedFlag v{version}[/dim]\n")
         UI.print_panel(f"Target: [bold cyan]{scanner.target_path}[/bold cyan]", title="Initialization")
         scanner.run()
+        
+        # Export to JSON if requested
+        if args.json:
+            from redflag.cogs.verdict import export_to_json
+            export_to_json(scanner, args.json)
+            UI.log(f"\n  [green]✓ Results exported to {args.json}[/green]")
     except KeyboardInterrupt:
         print("\nScan aborted.")
 

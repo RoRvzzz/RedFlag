@@ -38,6 +38,9 @@ class BuildScanCog:
             root = tree.getroot()
             ns = {'ns': root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
             
+            # Scan for linked libraries (AdditionalLibraryDirectories, AdditionalDependencies)
+            self._scan_linked_libraries(root, rel_path, ns)
+            
             events = ['PreBuildEvent', 'PostBuildEvent', 'PreLinkEvent']
             for event in events:
                 for item in root.iter():
@@ -56,8 +59,39 @@ class BuildScanCog:
                             
                             self._analyze_command(cmd, rel_path)
                             
+        except (ET.ParseError, OSError, PermissionError) as e:
+            # Expected XML parsing errors
+            pass
         except Exception as e:
             UI.log(f"  [red]Error parsing {rel_path}: {e}[/red]")
+    
+    def _scan_linked_libraries(self, root, rel_path, ns):
+        """Scan for suspicious linked libraries in project configuration"""
+        suspicious_libs = {
+            'wininet.lib': 3,
+            'urlmon.lib': 3,
+            'ws2_32.lib': 2,
+            'winhttp.lib': 2,
+            'crypt32.lib': 2,
+            'advapi32.lib': 1,  # Common but can be used maliciously
+        }
+        
+        # Find AdditionalDependencies elements
+        for item in root.iter():
+            if item.tag.endswith('AdditionalDependencies') or item.tag.endswith('AdditionalLibraryDirectories'):
+                deps_text = item.text or ""
+                for lib_name, score in suspicious_libs.items():
+                    if lib_name.lower() in deps_text.lower():
+                        self.scanner.add_finding(Finding(
+                            category="BUILD_CONFIG",
+                            description=f"Suspicious Linked Library: {lib_name}",
+                            file=rel_path,
+                            line=0,
+                            context=f"Library linked in project configuration",
+                            score=score,
+                            severity=get_severity(score)
+                        ))
+                        break  # Only report once per library per file
 
     def _analyze_command(self, cmd, file):
         cmd_lower = cmd.lower()

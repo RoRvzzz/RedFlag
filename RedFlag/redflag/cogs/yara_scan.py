@@ -105,6 +105,11 @@ class YaraScanCog:
                         severity=severity_str.upper(),
                         metadata={'rule': rule_name, 'meta': meta}
                     ))
+        except (OSError, PermissionError) as e:
+            # Expected file access errors - silently skip
+            pass
         except Exception as e:
-            # Just log verbose error if needed, don't crash
+            # Log unexpected errors for debugging (YARA errors are usually expected)
+            if hasattr(self.scanner, 'verbose') and self.scanner.verbose:
+                UI.log(f"  [dim red]YARA error scanning {path}: {type(e).__name__}[/dim red]")
             pass
