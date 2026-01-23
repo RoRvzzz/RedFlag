@@ -1,5 +1,6 @@
 
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urlextract import URLExtract
 from ..core.models import Finding
 from ..core.utils import UI, get_severity
@@ -32,16 +33,20 @@ class StringAnalysisCog:
         if not files_to_scan:
             return
 
+        # Use multi-threading for faster scanning
+        max_workers = min(8, len(files_to_scan))
+        
         progress = UI.get_progress()
         if progress:
             with progress:
                 task = progress.add_task(f"Scanning Strings in {len(files_to_scan)} files...", total=len(files_to_scan))
-                for f in files_to_scan:
-                    self._scan_file(f)
-                    progress.advance(task)
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = {executor.submit(self._scan_file, f): f for f in files_to_scan}
+                    for future in as_completed(futures):
+                        progress.advance(task)
         else:
-            for f in files_to_scan:
-                self._scan_file(f)
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                executor.map(self._scan_file, files_to_scan)
 
     def _scan_file(self, path):
         try:

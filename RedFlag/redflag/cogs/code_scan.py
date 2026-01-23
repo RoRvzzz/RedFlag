@@ -13,9 +13,7 @@ class CodeScanCog:
     def run(self):
         UI.log("\n[bold white]Step 3: Analyzing source code...[/bold white]")
         
-        # Initialize extracted images list
-        if not hasattr(self.scanner, 'extracted_images'):
-            self.scanner.extracted_images = []
+        # Ensure extracted images list exists (initialized in scanner __init__)
         
         files_to_scan = []
         
@@ -41,17 +39,21 @@ class CodeScanCog:
         # Track image count before scanning
         image_count_before = len(self.scanner.extracted_images)
 
+        # Use multi-threading for faster scanning
+        max_workers = min(8, len(files_to_scan))  # Cap at 8 threads or file count
+        
         progress = UI.get_progress()
         if progress:
             with progress:
                 task = progress.add_task(f"Scanning {len(files_to_scan)} files...", total=len(files_to_scan))
-                for f in files_to_scan:
-                    self._scan_single_file(f)
-                    progress.advance(task)
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = {executor.submit(self._scan_single_file, f): f for f in files_to_scan}
+                    for future in as_completed(futures):
+                        progress.advance(task)
         else:
             print(f"Scanning {len(files_to_scan)} files...")
-            for f in files_to_scan:
-                self._scan_single_file(f)
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                executor.map(self._scan_single_file, files_to_scan)
         
         # Show summary of extracted images
         image_count_after = len(self.scanner.extracted_images)
@@ -88,13 +90,14 @@ class CodeScanCog:
                                 skip_finding = True
                             elif any(x in rel_path.lower() for x in ['font', 'image', 'icon', 'resource', 'asset', 'protect', 'crypto']):
                                 skip_finding = True
-                            # Check if we've already identified this as a valid image
-                            elif hasattr(self.scanner, 'extracted_images'):
-                                for img_info in self.scanner.extracted_images:
-                                    if img_info['file'] == rel_path and abs(img_info['line'] - line_no) < 5:
-                                        # This array was identified as a valid image, suppress the finding
-                                        skip_finding = True
-                                        break
+                            # Check if we've already identified this as a valid image (thread-safe read)
+                            else:
+                                with self.scanner._lock:
+                                    for img_info in self.scanner.extracted_images:
+                                        if img_info['file'] == rel_path and abs(img_info['line'] - line_no) < 5:
+                                            # This array was identified as a valid image, suppress the finding
+                                            skip_finding = True
+                                            break
                             
                             if skip_finding:
                                 continue

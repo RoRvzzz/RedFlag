@@ -3,6 +3,7 @@ Scanner Engine - Orchestrates the analysis
 """
 import os
 import re
+import threading
 from collections import defaultdict
 from .config import PATTERNS, IGNORE_FILES
 from .models import Finding
@@ -19,13 +20,22 @@ class RedFlagScanner:
         self.project_type = "Unknown"
         self.suspicious_build_events = []
         
+        # Thread safety
+        self._lock = threading.Lock()
+        self.extracted_images = []
+        
         # Compile regexes
         self.compiled_patterns = {}
         for cat, pats in PATTERNS.items():
             self.compiled_patterns[cat] = [(re.compile(p, re.IGNORECASE), s, d) for p, s, d in pats]
 
     def add_finding(self, finding):
-        self.findings.append(finding)
+        with self._lock:
+            self.findings.append(finding)
+    
+    def add_extracted_image(self, image_info):
+        with self._lock:
+            self.extracted_images.append(image_info)
 
     def run(self):
         # Import cogs here to avoid circular imports if they need engine types, 

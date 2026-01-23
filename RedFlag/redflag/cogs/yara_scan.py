@@ -2,6 +2,7 @@
 Cog: YARA Scanning
 """
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from ..core.utils import UI, YARA_AVAILABLE, get_severity
 from ..core.config import DEFAULT_YARA_RULES, SKIP_EXTS, IGNORE_DIRS, IGNORE_FILES
 from ..core.models import Finding
@@ -54,16 +55,20 @@ class YaraScanCog:
         if not files_to_scan:
             return
 
+        # Use multi-threading for faster scanning
+        max_workers = min(8, len(files_to_scan))
+        
         progress = UI.get_progress()
         if progress:
             with progress:
                 task = progress.add_task(f"YARA Scanning {len(files_to_scan)} files...", total=len(files_to_scan))
-                for f in files_to_scan:
-                    self._scan_file(f)
-                    progress.advance(task)
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = {executor.submit(self._scan_file, f): f for f in files_to_scan}
+                    for future in as_completed(futures):
+                        progress.advance(task)
         else:
-            for f in files_to_scan:
-                self._scan_file(f)
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                executor.map(self._scan_file, files_to_scan)
 
     def _scan_file(self, path):
         try:
