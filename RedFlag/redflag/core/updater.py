@@ -16,6 +16,7 @@ from .utils import UI
 # GitHub repository info
 GITHUB_REPO = "RoRvzzz/RedFlag"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+GITHUB_REPO_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}"
 
 def get_current_version():
     """Get the current version of RedFlag"""
@@ -33,29 +34,52 @@ def check_for_updates(current_version=None):
     try:
         UI.log("  [dim]Checking for updates...[/dim]")
         
-        # Fetch latest release info from GitHub API
+        # First, try to get the latest release
         req = urllib.request.Request(GITHUB_API_URL)
         req.add_header('User-Agent', 'RedFlag-Updater/1.0')
         
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode())
-            
-        latest_version = data.get('tag_name', '').lstrip('v')
-        if not latest_version:
-            # No release found or tag_name is empty
-            return None, None
-        
-        # Debug: Log version comparison
-        comparison = _compare_versions(latest_version, current_version)
-        
-        # Compare versions (simple string comparison for semantic versions)
-        if comparison > 0:
-            return latest_version, data
-        elif comparison == 0:
-            # Versions are equal - no update needed
-            return None, None
-        else:
-            # Local version is newer than GitHub (development build)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode())
+                    latest_version = data.get('tag_name', '').lstrip('v')
+                    
+                    if latest_version:
+                        comparison = _compare_versions(latest_version, current_version)
+                        if comparison > 0:
+                            return latest_version, data
+                        elif comparison == 0:
+                            # Versions are equal - no update needed
+                            return None, None
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                # No releases found - check if we can get version from repo default branch
+                # This handles the case where code is updated but no release is created
+                try:
+                    repo_req = urllib.request.Request(f"{GITHUB_REPO_API_URL}/contents/redflag/__init__.py")
+                    repo_req.add_header('User-Agent', 'RedFlag-Updater/1.0')
+                    with urllib.request.urlopen(repo_req, timeout=10) as repo_response:
+                        if repo_response.status == 200:
+                            repo_data = json.loads(repo_response.read().decode())
+                            # Try to get version from file content (base64 encoded)
+                            import base64
+                            file_content = base64.b64decode(repo_data.get('content', '')).decode('utf-8')
+                            # Extract version from __version__ = "x.x.x"
+                            import re
+                            version_match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', file_content)
+                            if version_match:
+                                repo_version = version_match.group(1)
+                                comparison = _compare_versions(repo_version, current_version)
+                                if comparison > 0:
+                                    # Create a mock release data structure
+                                    mock_release = {
+                                        'tag_name': f'v{repo_version}',
+                                        'body': 'Update available from repository',
+                                        'zipball_url': f"https://github.com/{GITHUB_REPO}/archive/refs/heads/main.zip"
+                                    }
+                                    return repo_version, mock_release
+                except:
+                    pass
             return None, None
             
     except urllib.error.URLError as e:
@@ -68,6 +92,8 @@ def check_for_updates(current_version=None):
         # Log the error for debugging but don't interrupt the scan
         UI.log(f"  [dim]Update check failed: {type(e).__name__}[/dim]")
         return None, None
+    
+    return None, None
 
 def _compare_versions(v1, v2):
     """Compare two version strings. Returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal"""
