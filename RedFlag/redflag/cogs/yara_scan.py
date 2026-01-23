@@ -36,21 +36,8 @@ class YaraScanCog:
             return False
 
     def _scan_files(self):
-        files_to_scan = []
-        
-        def is_ignored_dir(d):
-            return d.lower() in IGNORE_DIRS
-        
-        if self.scanner.is_file:
-            if not any(self.scanner.target_path.lower().endswith(x) for x in SKIP_EXTS):
-                files_to_scan.append(self.scanner.target_path)
-        else:
-            for root, dirs, files in os.walk(self.scanner.target_dir):
-                dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
-                for f in files:
-                    if f.lower() in [x.lower() for x in IGNORE_FILES]: continue
-                    if not any(f.lower().endswith(x) for x in SKIP_EXTS):
-                        files_to_scan.append(os.path.join(root, f))
+        # Use cached file list for efficiency
+        files_to_scan = self.scanner.get_files_to_scan(include_binaries=False)
 
         if not files_to_scan:
             return

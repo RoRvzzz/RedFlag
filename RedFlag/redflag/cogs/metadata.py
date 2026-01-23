@@ -14,20 +14,8 @@ class MetadataScanCog:
     def run(self):
         UI.log("\n[bold white]Step 2b: extracting metadata...[/bold white]")
         
-        files_to_scan = []
-        
-        def is_ignored_dir(d):
-            return d.lower() in IGNORE_DIRS
-        
-        if self.scanner.is_file:
-            files_to_scan.append(self.scanner.target_path)
-        else:
-            for root, dirs, files in os.walk(self.scanner.target_dir):
-                dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
-                for f in files:
-                    if f in IGNORE_FILES: continue
-                    # Scan all files for metadata, regardless of extension check used for code scan
-                    files_to_scan.append(os.path.join(root, f))
+        # Use cached file list (metadata scan includes binaries)
+        files_to_scan = self.scanner.get_files_to_scan(include_binaries=True)
 
         if not files_to_scan:
             return

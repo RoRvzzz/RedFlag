@@ -25,10 +25,52 @@ class RedFlagScanner:
         self._lock = threading.Lock()
         self.extracted_images = []
         
+        # Cached file list (populated once, shared across cogs for efficiency)
+        self._cached_files = None
+        self._cached_all_files = None  # For metadata scan (includes binaries)
+        
         # Compile regexes
         self.compiled_patterns = {}
         for cat, pats in PATTERNS.items():
             self.compiled_patterns[cat] = [(re.compile(p, re.IGNORECASE), s, d) for p, s, d in pats]
+    
+    def get_files_to_scan(self, include_binaries=False):
+        """Get list of files to scan, with caching for efficiency"""
+        from .config import IGNORE_DIRS, IGNORE_FILES, SKIP_EXTS
+        
+        # Return cached if available
+        if not include_binaries and self._cached_files is not None:
+            return self._cached_files
+        if include_binaries and self._cached_all_files is not None:
+            return self._cached_all_files
+        
+        files_to_scan = []
+        
+        def is_ignored_dir(d):
+            return d.lower() in IGNORE_DIRS
+        
+        if self.is_file:
+            if include_binaries or not any(self.target_path.lower().endswith(x) for x in SKIP_EXTS):
+                files_to_scan.append(self.target_path)
+        else:
+            # Single walk through directory tree
+            for root, dirs, files in os.walk(self.target_dir):
+                # Filter ignored directories in-place
+                dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
+                
+                for f in files:
+                    if f.lower() in [x.lower() for x in IGNORE_FILES]:
+                        continue
+                    if include_binaries or not any(f.lower().endswith(x) for x in SKIP_EXTS):
+                        files_to_scan.append(os.path.join(root, f))
+        
+        # Cache the result
+        if include_binaries:
+            self._cached_all_files = files_to_scan
+        else:
+            self._cached_files = files_to_scan
+        
+        return files_to_scan
 
     def add_finding(self, finding):
         with self._lock:
