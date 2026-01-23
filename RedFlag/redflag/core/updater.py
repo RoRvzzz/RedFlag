@@ -40,9 +40,10 @@ def check_for_updates(current_version=None):
         
         try:
             with urllib.request.urlopen(req, timeout=10) as response:
-                if response.status == 200:
+                    if response.status == 200:
                     data = json.loads(response.read().decode())
-                    latest_version = data.get('tag_name', '').lstrip('v')
+                    # Strip both 'v' and 'V' from tag name
+                    latest_version = data.get('tag_name', '').lstrip('vV')
                     
                     if latest_version:
                         comparison = _compare_versions(latest_version, current_version)
