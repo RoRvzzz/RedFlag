@@ -126,21 +126,42 @@ class VerdictCog:
                     tags = ", ".join(f.metadata['mitre'])
                     mitre_text = f" [dim cyan][{tags}][/dim cyan]"
 
-                if ']' in s_color: 
-                     UI.log(f" • [{s_color}]{f.severity:8}[/{s_color}] {f.file}:{f.line} - [bold]{f.description}[/bold]{mitre_text}")
-                else:
-                     UI.log(f" • [{s_color}]{f.severity:8}[/{s_color}] {f.file}:{f.line} - [bold]{f.description}[/bold]{mitre_text}")
+                # Truncate long file paths for cleaner display
+                file_display = f.file
+                if len(file_display) > 60:
+                    file_display = "..." + file_display[-57:]
                 
-                if f.line > 0:
-                    ctx = f.context.strip()[:80]
+                # Format severity badge
+                if ']' in s_color: 
+                    severity_badge = f"[{s_color}]{f.severity:8}[/{s_color}]"
+                else:
+                    severity_badge = f"[{s_color}]{f.severity:8}[/{s_color}]"
+                
+                # Main finding line
+                UI.log(f" • {severity_badge} [bold]{f.description}[/bold]{mitre_text}")
+                UI.log(f"   [dim]{file_display}:{f.line}[/dim]")
+                
+                # Context (if available and not too long)
+                if f.line > 0 and f.context:
+                    ctx = f.context.strip()
+                    # Clean up context - remove excessive whitespace
+                    ctx = ' '.join(ctx.split())
+                    if len(ctx) > 100:
+                        ctx = ctx[:97] + "..."
                     if ctx:
-                        UI.log(f"   [dim]{ctx}[/dim]")
+                        UI.log(f"   [dim]└─ {ctx}[/dim]")
                 
                 # Show definition if available and enabled
                 if self.scanner.show_definitions:
                     defn = get_definition(f.description)
                     if defn:
-                        UI.log(f"   [dim cyan]ℹ {defn['description']}[/dim cyan]")
-                        UI.log(f"   [dim yellow]⚠ Risk: {defn['risk']}[/dim yellow]")
+                        # Make definition more compact
+                        desc = defn['description']
+                        if len(desc) > 120:
+                            desc = desc[:117] + "..."
+                        UI.log(f"   [cyan]ℹ[/cyan] [dim cyan]{desc}[/dim cyan]")
+                        UI.log(f"   [yellow]⚠[/yellow] [dim yellow]{defn['risk']}[/dim yellow]")
                 
                 count += 1
+                if count < 10:  # Add spacing between findings (except last one)
+                    UI.log("")

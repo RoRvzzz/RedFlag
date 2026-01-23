@@ -22,17 +22,38 @@ class ProjectIdentityCog:
             UI.log(f"  {icon} Analyzing single file: [bold cyan]{os.path.basename(self.scanner.target_path)}[/bold cyan]")
             return
 
-        files = os.listdir(self.scanner.target_dir)
-        has_sln = any(f.endswith('.sln') for f in files)
-        has_vcxproj = any(f.endswith('.vcxproj') for f in files)
-        has_makefile = 'Makefile' in files
-        has_git = '.git' in files
+        # Search for .sln files recursively and also check for .vs folders
+        sln_files = []
+        vs_folders = []
         
-        if has_sln:
+        for root, dirs, files in os.walk(self.scanner.target_dir):
+            # Check for .vs folder (Visual Studio cache folder - indicates VS project)
+            if '.vs' in dirs:
+                vs_folders.append(os.path.join(root, '.vs'))
+            
+            # Check for .sln files
+            for f in files:
+                if f.endswith('.sln'):
+                    sln_files.append(os.path.join(root, f))
+        
+        # Also check root directory
+        root_files = os.listdir(self.scanner.target_dir)
+        has_vcxproj = any(f.endswith('.vcxproj') for f in root_files)
+        has_makefile = 'Makefile' in root_files
+        has_git = '.git' in root_files
+        
+        # If we found .sln files, use the first one (or closest to root)
+        if sln_files:
+            # Sort by depth (prefer files closer to root)
+            sln_files.sort(key=lambda x: x.count(os.sep))
             self.scanner.project_type = "Visual Studio Solution"
             icon = "🔷"
             # Parse SLN to find projects
-            self._parse_sln(files)
+            self._parse_sln_files(sln_files)
+        elif vs_folders:
+            # Found .vs folder but no .sln in root - might be in subfolder
+            self.scanner.project_type = "Visual Studio Project (detected via .vs folder)"
+            icon = "🔷"
         elif has_vcxproj:
             self.scanner.project_type = "Visual Studio Project"
             icon = "🔷"
@@ -47,12 +68,13 @@ class ProjectIdentityCog:
         if has_git:
             UI.log("  🌲 Git repository detected")
 
-    def _parse_sln(self, files):
+    def _parse_sln_files(self, sln_file_paths):
         """Parse .sln files to find all referenced projects"""
-        sln_files = [f for f in files if f.endswith('.sln')]
-        for sln_file in sln_files:
+        for sln_path in sln_file_paths:
             try:
-                sln_path = os.path.join(self.scanner.target_dir, sln_file)
+                # Get the directory containing the .sln file (solution root)
+                sln_dir = os.path.dirname(sln_path)
+                
                 with open(sln_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                 
@@ -63,7 +85,8 @@ class ProjectIdentityCog:
                 for match in matches:
                     # Normalize path separators
                     rel_proj_path = match.replace('\\', os.sep)
-                    full_proj_path = os.path.normpath(os.path.join(self.scanner.target_dir, rel_proj_path))
+                    # Join relative to the .sln file's directory
+                    full_proj_path = os.path.normpath(os.path.join(sln_dir, rel_proj_path))
                     
                     if os.path.exists(full_proj_path) and full_proj_path.endswith('.vcxproj'):
                         if full_proj_path not in self.scanner.project_files:
@@ -72,4 +95,4 @@ class ProjectIdentityCog:
                 if self.scanner.project_files:
                     UI.log(f"  📌 Found {len(self.scanner.project_files)} referenced projects in solution.")
             except Exception as e:
-                UI.log(f"  [yellow]Warning: Failed to parse SLN file {sln_file}: {e}[/yellow]")
+                UI.log(f"  [yellow]Warning: Failed to parse SLN file {os.path.basename(sln_path)}: {e}[/yellow]")
