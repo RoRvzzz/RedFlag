@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 import sys
+import os
 import argparse
+
+# Ensure the current directory is in the Python path so we can import redflag
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
 from redflag.core.engine import RedFlagScanner
 from redflag.core.config import BANNER
 from redflag.core.utils import UI
