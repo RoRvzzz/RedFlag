@@ -12,6 +12,7 @@ def main():
     parser.add_argument("--skip-update", action="store_true", help="Skip update check")
     parser.add_argument("--auto-update", action="store_true", help="Automatically install updates without asking")
     parser.add_argument("--version", action="store_true", help="Show version and exit")
+    parser.add_argument("--no-definitions", action="store_true", help="Hide technical definitions in output")
     args = parser.parse_args()
     
     # Show version and exit
@@ -42,7 +43,7 @@ def main():
         print("No path provided.")
         return
 
-    scanner = RedFlagScanner(path)
+    scanner = RedFlagScanner(path, show_definitions=not args.no_definitions)
     try:
         version = get_current_version()
         UI.print_banner(BANNER)

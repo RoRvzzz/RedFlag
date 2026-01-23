@@ -10,7 +10,7 @@ from .models import Finding
 from .utils import UI
 
 class RedFlagScanner:
-    def __init__(self, target_path):
+    def __init__(self, target_path, show_definitions=True):
         self.target_path = os.path.abspath(target_path)
         self.is_file = os.path.isfile(self.target_path)
         self.target_dir = os.path.dirname(self.target_path) if self.is_file else self.target_path
@@ -19,6 +19,7 @@ class RedFlagScanner:
         self.stats = defaultdict(int)
         self.project_type = "Unknown"
         self.suspicious_build_events = []
+        self.show_definitions = show_definitions  # Whether to show definitions in output
         
         # Thread safety
         self._lock = threading.Lock()

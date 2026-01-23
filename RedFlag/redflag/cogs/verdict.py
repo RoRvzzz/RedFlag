@@ -3,6 +3,7 @@ import time
 from collections import defaultdict
 from ..core.models import Finding
 from ..core.utils import UI, get_severity
+from ..core.definitions import get_definition
 
 class VerdictCog:
     def __init__(self, scanner):
@@ -134,5 +135,12 @@ class VerdictCog:
                     ctx = f.context.strip()[:80]
                     if ctx:
                         UI.log(f"   [dim]{ctx}[/dim]")
+                
+                # Show definition if available and enabled
+                if self.scanner.show_definitions:
+                    defn = get_definition(f.description)
+                    if defn:
+                        UI.log(f"   [dim cyan]ℹ {defn['description']}[/dim cyan]")
+                        UI.log(f"   [dim yellow]⚠ Risk: {defn['risk']}[/dim yellow]")
                 
                 count += 1
