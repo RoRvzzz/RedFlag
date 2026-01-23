@@ -28,3 +28,5 @@ check.py
 checker.py
 test_*
 
+# Allow test files in tests/ directory
+!tests/test_*.py
