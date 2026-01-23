@@ -111,7 +111,7 @@ RedFlag performs analysis in 5 steps:
 ![Screenshots](https://img.shields.io/badge/06-Screenshots-b91c1c?style=for-the-badge&logo=google-photos&logoColor=white)
 
 <p align="center">
-  <img src="RedFlag/assets/redflag.png" alt="RedFlag Logo" width="500">
+  <img src="RedFlag/assets/RedFlag.png" alt="RedFlag Logo" width="500">
 </p>
 
 ### See it in action!
