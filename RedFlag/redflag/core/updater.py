@@ -12,6 +12,7 @@ import urllib.request
 import urllib.error
 from .utils import UI
 
+
 # GitHub repository info
 GITHUB_REPO = "RoRvzzz/RedFlag"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
