@@ -32,11 +32,12 @@ def main():
     if not args.skip_update:
         try:
             if args.auto_update:
-                auto_update(ask_user=False)
+                auto_update(ask_user=False, prefer_pip=True)
             else:
-                auto_update(ask_user=True)
-        except Exception:
-            pass  # Don't fail if update check fails
+                auto_update(ask_user=True, prefer_pip=True)
+        except Exception as e:
+            # Don't fail if update check fails, but log for debugging
+            pass
     
     path = args.path
     if not path:

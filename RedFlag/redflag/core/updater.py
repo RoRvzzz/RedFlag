@@ -37,24 +37,36 @@ def check_for_updates(current_version=None):
         req = urllib.request.Request(GITHUB_API_URL)
         req.add_header('User-Agent', 'RedFlag-Updater/1.0')
         
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode())
             
         latest_version = data.get('tag_name', '').lstrip('v')
         if not latest_version:
+            # No release found or tag_name is empty
             return None, None
         
+        # Debug: Log version comparison
+        comparison = _compare_versions(latest_version, current_version)
+        
         # Compare versions (simple string comparison for semantic versions)
-        if _compare_versions(latest_version, current_version) > 0:
+        if comparison > 0:
             return latest_version, data
+        elif comparison == 0:
+            # Versions are equal - no update needed
+            return None, None
         else:
+            # Local version is newer than GitHub (development build)
             return None, None
             
-    except urllib.error.URLError:
-        UI.log("  [dim]Could not check for updates (no internet connection)[/dim]")
+    except urllib.error.URLError as e:
+        UI.log(f"  [dim]Could not check for updates: {e}[/dim]")
+        return None, None
+    except json.JSONDecodeError as e:
+        UI.log(f"  [dim]Failed to parse update response[/dim]")
         return None, None
     except Exception as e:
-        # Silently fail - don't interrupt the scan
+        # Log the error for debugging but don't interrupt the scan
+        UI.log(f"  [dim]Update check failed: {type(e).__name__}[/dim]")
         return None, None
 
 def _compare_versions(v1, v2):
