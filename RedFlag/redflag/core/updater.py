@@ -132,6 +132,7 @@ def install_update(zip_path, temp_dir, install_dir=None):
         backup_dir = os.path.join(install_dir, 'redflag_backup')
         if os.path.exists(backup_dir):
             shutil.rmtree(backup_dir)
+        os.makedirs(backup_dir, exist_ok=True)
         
         current_redflag = os.path.join(install_dir, 'redflag')
         current_assets = os.path.join(install_dir, 'assets')
@@ -139,13 +140,11 @@ def install_update(zip_path, temp_dir, install_dir=None):
         # Backup redflag package
         if os.path.exists(current_redflag):
             backup_redflag = os.path.join(backup_dir, 'redflag')
-            os.makedirs(os.path.dirname(backup_redflag), exist_ok=True)
             shutil.move(current_redflag, backup_redflag)
         
         # Backup assets folder if it exists
         if os.path.exists(current_assets):
             backup_assets = os.path.join(backup_dir, 'assets')
-            os.makedirs(os.path.dirname(backup_assets), exist_ok=True)
             shutil.move(current_assets, backup_assets)
         
         # Copy new version - ensure all __init__.py files are preserved
