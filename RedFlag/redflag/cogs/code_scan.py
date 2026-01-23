@@ -2,6 +2,7 @@
 import os
 import binascii
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from ..core.config import IGNORE_DIRS, IGNORE_FILES, SKIP_EXTS, BASE64_REGEX
 from ..core.models import Finding
 from ..core.utils import UI, calculate_entropy, get_severity, xor_brute
@@ -292,7 +293,8 @@ class CodeScanCog:
                     except Exception as e:
                         saved_path = None
                     
-                    self.scanner.extracted_images.append({
+                    # Thread-safe append
+                    self.scanner.add_extracted_image({
                         'file': rel_path,
                         'line': line_no,
                         'type': image_type,
