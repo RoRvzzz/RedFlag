@@ -64,7 +64,40 @@ python discord_bot.py --token YOUR_BOT_TOKEN --prefix "rf!"
 
 ## Commands
 
-### `!redflag <path>` or `!scan <path>`
+RedFlag bot supports **both slash commands (/) and prefix commands (!)** for maximum flexibility.
+
+### Slash Commands (Recommended)
+
+#### `/redflag <path>`
+
+Scan a project or file for malicious indicators.
+
+**Examples:**
+```
+/redflag path:/path/to/project
+/redflag path:C:\Users\Project
+```
+
+#### `/redflag-json <path>`
+
+Scan and export results as a JSON file.
+
+**Example:**
+```
+/redflag-json path:/path/to/project
+```
+
+#### `/redflag-help`
+
+Show help message with all available commands.
+
+#### `/redflag-version`
+
+Show RedFlag version information.
+
+### Prefix Commands
+
+#### `!redflag <path>` or `!scan <path>`
 
 Scan a project or file for malicious indicators.
 
@@ -72,13 +105,14 @@ Scan a project or file for malicious indicators.
 ```
 !redflag /path/to/project
 !scan C:\Users\Project
+!rf /path/to/project
 ```
 
 **With File Attachments:**
 - Attach files to your message and use `!redflag` without a path
 - The bot will download and scan the attached files
 
-### `!redflag-json <path>`
+#### `!redflag-json <path>`
 
 Scan and export results as a JSON file.
 
@@ -87,11 +121,11 @@ Scan and export results as a JSON file.
 !redflag-json /path/to/project
 ```
 
-### `!redflag-help`
+#### `!redflag-help`
 
 Show help message with all available commands.
 
-### `!redflag-version`
+#### `!redflag-version`
 
 Show RedFlag version information.
 
@@ -142,12 +176,20 @@ Required permissions:
 - Check that the bot is online (green status in Discord)
 - Verify the bot has "Message Content Intent" enabled
 - Ensure the bot has permission to read messages in the channel
+- For slash commands, wait a few minutes after bot startup for commands to sync
 
 ### "Command Not Found"
 
+**For Prefix Commands:**
 - Check your command prefix (default is `!`)
 - Make sure you're using the correct command name
 - Try `!redflag-help` to see available commands
+
+**For Slash Commands:**
+- Slash commands may take a few minutes to appear after bot startup
+- Type `/` in Discord and look for `redflag` commands
+- If commands don't appear, the bot may need to sync (restart the bot)
+- Try `/redflag-help` to see available commands
 
 ### Import Errors
 
