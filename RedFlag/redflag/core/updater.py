@@ -119,9 +119,10 @@ def install_update(zip_path, temp_dir, install_dir=None):
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_dir)
         
-        # Find the redflag directory in extracted files
+        # Find the redflag directory and assets folder in extracted files
         extracted_root = os.listdir(extract_dir)[0]  # Usually one root folder
         source_redflag = os.path.join(extract_dir, extracted_root, 'redflag')
+        source_assets = os.path.join(extract_dir, extracted_root, 'assets')
         
         if not os.path.exists(source_redflag):
             UI.log("  [red]Could not find redflag directory in update[/red]")
@@ -133,11 +134,28 @@ def install_update(zip_path, temp_dir, install_dir=None):
             shutil.rmtree(backup_dir)
         
         current_redflag = os.path.join(install_dir, 'redflag')
+        current_assets = os.path.join(install_dir, 'assets')
+        
+        # Backup redflag package
         if os.path.exists(current_redflag):
-            shutil.move(current_redflag, backup_dir)
+            backup_redflag = os.path.join(backup_dir, 'redflag')
+            os.makedirs(os.path.dirname(backup_redflag), exist_ok=True)
+            shutil.move(current_redflag, backup_redflag)
+        
+        # Backup assets folder if it exists
+        if os.path.exists(current_assets):
+            backup_assets = os.path.join(backup_dir, 'assets')
+            os.makedirs(os.path.dirname(backup_assets), exist_ok=True)
+            shutil.move(current_assets, backup_assets)
         
         # Copy new version - ensure all __init__.py files are preserved
         shutil.copytree(source_redflag, current_redflag)
+        
+        # Copy assets folder if it exists in the update
+        if os.path.exists(source_assets):
+            if os.path.exists(current_assets):
+                shutil.rmtree(current_assets)
+            shutil.copytree(source_assets, current_assets)
         
         # Verify critical __init__.py files exist
         critical_files = [

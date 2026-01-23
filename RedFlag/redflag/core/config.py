@@ -1,9 +1,24 @@
 """
 Configuration and constants for RedFlag
 """
+import os
 import re
 
-BANNER = r"""
+# Load banner from assets folder
+def _load_banner():
+    """Load the ASCII art banner from assets/ascii_art.txt"""
+    # Get the directory where this config file is located
+    config_dir = os.path.dirname(os.path.abspath(__file__))
+    # Navigate to assets folder (go up from redflag/core to redflag, then up to root, then into assets)
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(config_dir)))
+    banner_path = os.path.join(root_dir, 'assets', 'ascii_art.txt')
+    
+    try:
+        with open(banner_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except (FileNotFoundError, IOError):
+        # Fallback to hardcoded banner if file not found
+        return r"""
 $$$$$$$\                  $$\ $$$$$$$$\ $$\                      oo_____________
 $$  __$$\                 $$ |$$  _____|$$ |                     ||\\\\////\\\\||
 $$ |  $$ | $$$$$$\   $$$$$$$ |$$ |      $$ | $$$$$$\   $$$$$$\   ||\\\\////\\\\||
@@ -16,6 +31,8 @@ $$ |  $$ |\$$$$$$$\ \$$$$$$$ |$$ |      $$ |\$$$$$$$ |\$$$$$$$ | ||
                                                       \$$$$$$  | ||
                                                        \______/  ||
 """
+
+BANNER = _load_banner()
 
 IGNORE_DIRS = {
     '.git', '.svn', '.vs', '.vscode', '.idea',
