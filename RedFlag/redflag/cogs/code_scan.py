@@ -113,7 +113,8 @@ class CodeScanCog:
                                 continue
                             
                             # Skip if it's calling a capitalized System() function (not system())
-                            if 'System(' in ctx and 'system(' not in ctx.lower():
+                            # Check for namespace-qualified System() calls like utils::output::System()
+                            if re.search(r'(?:::|\.)\s*System\s*\(', ctx) or ('System(' in ctx and 'system(' not in lower_ctx):
                                 continue
                             
                             # Skip if it's in a comment
@@ -130,6 +131,15 @@ class CodeScanCog:
                             elif 'cls' in lower_ctx or 'pause' in lower_ctx:
                                 # Already filtered in pattern, but double-check
                                 continue
+                        
+                        # Filter out example/documentation code for network APIs
+                        if cat == 'NETWORK' and ('WinINet API' in desc or 'Raw Socket' in desc):
+                            lower_ctx = ctx.lower()
+                            # Skip if it's clearly example/documentation code
+                            if 'example' in lower_ctx or 'demo' in lower_ctx or 'test' in lower_ctx:
+                                # Check if it's in a comment or string literal (likely documentation)
+                                if ctx.strip().startswith('//') or '/*' in ctx or '*/' in ctx or '"Example' in ctx or "'Example" in ctx:
+                                    continue
 
                         self.scanner.add_finding(Finding(
                             category=cat,

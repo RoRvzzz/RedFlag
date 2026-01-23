@@ -42,7 +42,7 @@ SKIP_EXTS = {
 
 # Benign domains to filter out from URL findings (common legitimate services)
 BENIGN_DOMAINS = {
-    'github.com', 'github.io', 'gitlab.com',
+    'github.com', 'github.io', 'raw.githubusercontent.com', 'gitlab.com',
     'microsoft.com', 'windowsupdate.com',
     'google.com', 'gstatic.com', 'googleapis.com',
     'stackoverflow.com', 'stackexchange.com',

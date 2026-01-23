@@ -58,10 +58,12 @@ class StringAnalysisCog:
                 # Basic cleanup
                 clean_url = url.lower().strip()
                 
-                # Filter out benign domains
+                # Filter out benign domains (check for exact domain match or subdomain)
                 is_benign = False
                 for domain in BENIGN_DOMAINS:
-                    if domain in clean_url:
+                    # Check if domain matches exactly or is a subdomain
+                    if clean_url.startswith(f'http://{domain}') or clean_url.startswith(f'https://{domain}') or \
+                       f'.{domain}' in clean_url or clean_url.endswith(domain):
                         is_benign = True
                         break
                 
