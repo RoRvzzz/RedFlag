@@ -82,7 +82,7 @@ def download_update(release_data, target_dir=None):
         zipball_url = release_data.get('zipball_url')
         if not zipball_url:
             UI.log("  [red]No download URL found in release[/red]")
-            return False
+            return None, None
         
         UI.log(f"  [yellow]Downloading update...[/yellow]")
         
@@ -104,8 +104,42 @@ def download_update(release_data, target_dir=None):
         UI.log(f"  [red]Failed to download update: {e}[/red]")
         return None, None
 
+def install_update_pip(git_url, tag_name):
+    """
+    Use pip to update the package directly from git.
+    This handles file locking and permission errors much better than manual file moves.
+    """
+    UI.log("  [yellow]Installing update via pip...[/yellow]")
+    try:
+        # Install directly from the repo's tag
+        # Format: git+https://github.com/User/Repo.git@tag
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "--force-reinstall", git_url],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        
+        if result.returncode == 0:
+            UI.log("  [bold green]✓ Update installed successfully![/bold green]")
+            UI.log("  [dim]Please restart RedFlag to use the new version.[/dim]")
+            return True
+        else:
+            UI.log(f"  [red]Update failed: {result.stderr}[/red]")
+            UI.log("  [dim]Try running the tool as Administrator or use manual update method.[/dim]")
+            return False
+    except subprocess.TimeoutExpired:
+        UI.log("  [red]Update timed out. Please try again.[/red]")
+        return False
+    except Exception as e:
+        UI.log(f"  [red]Update failed: {e}[/red]")
+        return False
+
 def install_update(zip_path, temp_dir, install_dir=None):
-    """Install the downloaded update"""
+    """
+    Install the downloaded update using manual file copy.
+    NOTE: On Windows, this may fail if files are locked. Use pip method instead.
+    """
     if install_dir is None:
         # Try to find the installation directory
         install_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -120,65 +154,82 @@ def install_update(zip_path, temp_dir, install_dir=None):
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_dir)
         
-        # Find the redflag directory and assets folder in extracted files
-        extracted_root = os.listdir(extract_dir)[0]  # Usually one root folder
-        source_redflag = os.path.join(extract_dir, extracted_root, 'redflag')
-        source_assets = os.path.join(extract_dir, extracted_root, 'assets')
+        # 1. Find the root folder extracted from GitHub
+        extracted_root_name = os.listdir(extract_dir)[0]
+        extracted_root_path = os.path.join(extract_dir, extracted_root_name)
+        
+        # 2. INTELLIGENT PATH FINDING
+        # Check if 'redflag' is a subfolder (Common case)
+        potential_source = os.path.join(extracted_root_path, 'redflag')
+        potential_assets = os.path.join(extracted_root_path, 'assets')
+        
+        if os.path.exists(potential_source):
+            source_redflag = potential_source
+            source_assets = potential_assets
+        else:
+            # Fallback: Maybe the root itself IS the package?
+            # Check if __init__.py exists in the root
+            if os.path.exists(os.path.join(extracted_root_path, '__init__.py')):
+                source_redflag = extracted_root_path
+                source_assets = None  # Assets might be at root level
+            else:
+                UI.log(f"  [red]Error: Could not find valid package structure in update.[/red]")
+                UI.log(f"  [dim]Checked: {potential_source}[/dim]")
+                UI.log(f"  [dim]Root path: {extracted_root_path}[/dim]")
+                return False
         
         if not os.path.exists(source_redflag):
             UI.log("  [red]Could not find redflag directory in update[/red]")
             return False
         
-        # Backup current installation
-        backup_dir = os.path.join(install_dir, 'redflag_backup')
-        if os.path.exists(backup_dir):
-            shutil.rmtree(backup_dir)
-        os.makedirs(backup_dir, exist_ok=True)
-        
+        # On Windows, we can't move files that are currently in use
+        # So we'll copy to a staging area and instruct user to restart
         current_redflag = os.path.join(install_dir, 'redflag')
         current_assets = os.path.join(install_dir, 'assets')
         
-        # Backup redflag package
-        if os.path.exists(current_redflag):
-            backup_redflag = os.path.join(backup_dir, 'redflag')
-            shutil.move(current_redflag, backup_redflag)
+        # Create staging directory for new files
+        staging_dir = os.path.join(install_dir, 'redflag_update_staging')
+        if os.path.exists(staging_dir):
+            shutil.rmtree(staging_dir)
         
-        # Backup assets folder if it exists
-        if os.path.exists(current_assets):
-            backup_assets = os.path.join(backup_dir, 'assets')
-            shutil.move(current_assets, backup_assets)
-        
-        # Copy new version - ensure all __init__.py files are preserved
-        shutil.copytree(source_redflag, current_redflag)
+        # Copy new version to staging area
+        staging_redflag = os.path.join(staging_dir, 'redflag')
+        shutil.copytree(source_redflag, staging_redflag)
         
         # Copy assets folder if it exists in the update
-        if os.path.exists(source_assets):
-            if os.path.exists(current_assets):
-                shutil.rmtree(current_assets)
-            shutil.copytree(source_assets, current_assets)
+        if source_assets and os.path.exists(source_assets):
+            staging_assets = os.path.join(staging_dir, 'assets')
+            shutil.copytree(source_assets, staging_assets)
         
         # Verify critical __init__.py files exist
         critical_files = [
-            os.path.join(current_redflag, '__init__.py'),
-            os.path.join(current_redflag, 'core', '__init__.py'),
-            os.path.join(current_redflag, 'cogs', '__init__.py')
+            os.path.join(staging_redflag, '__init__.py'),
+            os.path.join(staging_redflag, 'core', '__init__.py'),
+            os.path.join(staging_redflag, 'cogs', '__init__.py')
         ]
         for critical_file in critical_files:
             if not os.path.exists(critical_file):
-                UI.log(f"  [yellow]Warning: Missing {os.path.relpath(critical_file, install_dir)} - creating it[/yellow]")
-                # Create empty __init__.py if missing
+                UI.log(f"  [yellow]Warning: Missing {os.path.basename(critical_file)} - creating it[/yellow]")
                 os.makedirs(os.path.dirname(critical_file), exist_ok=True)
                 with open(critical_file, 'w') as f:
                     f.write('')
         
-        # Cleanup backup if successful
-        if os.path.exists(backup_dir):
-            shutil.rmtree(backup_dir)
+        UI.log("  [bold yellow]⚠ Update files prepared in staging area.[/bold yellow]")
+        UI.log("  [yellow]Due to Windows file locking, please restart RedFlag to complete the update.[/yellow]")
+        UI.log(f"  [dim]Staging directory: {staging_dir}[/dim]")
+        UI.log("  [dim]On next startup, the update will be applied automatically.[/dim]")
         
-        UI.log("  [bold green]✓ Update installed successfully![/bold green]")
-        UI.log("  [dim]Please restart RedFlag to use the new version.[/dim]")
+        # Create a flag file to indicate update is pending
+        update_flag = os.path.join(install_dir, '.redflag_update_pending')
+        with open(update_flag, 'w') as f:
+            f.write(staging_dir)
+        
         return True
         
+    except PermissionError as e:
+        UI.log(f"  [red]Permission denied: {e}[/red]")
+        UI.log("  [yellow]Try running RedFlag as Administrator, or use the pip update method.[/yellow]")
+        return False
     except Exception as e:
         UI.log(f"  [red]Failed to install update: {e}[/red]")
         # Try to restore backup
@@ -188,16 +239,15 @@ def install_update(zip_path, temp_dir, install_dir=None):
             shutil.move(backup_dir, current_redflag)
             UI.log("  [yellow]Restored previous version from backup[/yellow]")
         return False
-    finally:
-        # Cleanup temp files
-        try:
-            if temp_dir and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-        except:
-            pass
 
-def auto_update(ask_user=True):
-    """Check for updates and optionally install them"""
+def auto_update(ask_user=True, prefer_pip=True):
+    """
+    Check for updates and optionally install them
+    
+    Args:
+        ask_user: Whether to prompt the user before updating
+        prefer_pip: If True, try pip method first (recommended). If False, use manual zip method.
+    """
     current_version = get_current_version()
     latest_version, release_data = check_for_updates(current_version)
     
@@ -215,6 +265,14 @@ def auto_update(ask_user=True):
             try:
                 response = input("\n  [yellow]Would you like to update now? (y/n): [/yellow]").strip().lower()
                 if response in ['y', 'yes']:
+                    if prefer_pip:
+                        # Try pip method first
+                        git_url = f"git+https://github.com/{GITHUB_REPO}.git@{release_data.get('tag_name', 'main')}"
+                        if install_update_pip(git_url, release_data.get('tag_name', 'main')):
+                            return True
+                        # Fallback to manual method
+                        UI.log("  [yellow]Pip update failed, trying manual method...[/yellow]")
+                    
                     zip_path, temp_dir = download_update(release_data)
                     if zip_path:
                         success = install_update(zip_path, temp_dir)
@@ -225,6 +283,14 @@ def auto_update(ask_user=True):
                 return False
         else:
             # Auto-update without asking
+            if prefer_pip:
+                # Try pip method first
+                git_url = f"git+https://github.com/{GITHUB_REPO}.git@{release_data.get('tag_name', 'main')}"
+                if install_update_pip(git_url, release_data.get('tag_name', 'main')):
+                    return True
+                # Fallback to manual method
+                UI.log("  [yellow]Pip update failed, trying manual method...[/yellow]")
+            
             zip_path, temp_dir = download_update(release_data)
             if zip_path:
                 return install_update(zip_path, temp_dir)
