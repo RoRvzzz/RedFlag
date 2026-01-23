@@ -63,6 +63,11 @@ class CodeScanCog:
             rel_base = self.scanner.target_dir if not self.scanner.is_file else os.path.dirname(self.scanner.target_dir)
             rel_path = os.path.relpath(path, rel_base)
             
+            # Only scan C++ source files for XOR obfuscation (not project files, HTML, etc.)
+            source_extensions = {'.cpp', '.h', '.hpp', '.c', '.cc', '.cxx', '.hxx'}
+            _, ext = os.path.splitext(path.lower())
+            is_source_file = ext in source_extensions
+            
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
@@ -203,7 +208,9 @@ class CodeScanCog:
             # Only scan if content length suggests it might hide payloads
             if len(content) > 100:  # Skip tiny files
                 self._scan_blobs(content, rel_path)
-                self._scan_xor(content, rel_path)
+                # Only scan XOR on actual C++ source files (not project files, HTML, etc.)
+                if is_source_file:
+                    self._scan_xor(content, rel_path)
 
         except Exception:
             pass
@@ -386,9 +393,30 @@ class CodeScanCog:
                 for key, decoded_text in results:
                     suspicious = False
                     
-                    # Quick keyword check in decoded text
-                    if any(x in decoded_text.lower() for x in ['http', 'cmd', 'powershell', 'exec', 'system']):
+                    # More strict keyword check - must contain multiple suspicious indicators
+                    decoded_lower = decoded_text.lower()
+                    suspicious_keywords = ['http', 'cmd', 'powershell', 'exec', 'system', 'download', 'upload', 
+                                          'invoke', 'iwr', 'curl', 'wget', 'base64', 'encoded', 'shell', 
+                                          'process', 'inject', 'payload', 'malware', 'trojan', 'virus']
+                    
+                    # Count how many suspicious keywords are found
+                    keyword_count = sum(1 for kw in suspicious_keywords if kw in decoded_lower)
+                    
+                    # Require at least 2 suspicious keywords, or one very high-risk keyword
+                    high_risk_keywords = ['powershell', 'invoke', 'download', 'upload', 'payload', 'inject']
+                    has_high_risk = any(kw in decoded_lower for kw in high_risk_keywords)
+                    
+                    if keyword_count >= 2 or has_high_risk:
                         suspicious = True
+                    
+                    # Also check if it looks like a command or URL
+                    if not suspicious:
+                        # Check if decoded text looks like a command (starts with common command prefixes)
+                        if any(decoded_lower.startswith(prefix) for prefix in ['cmd', 'powershell', 'start', 'run']):
+                            suspicious = True
+                        # Check if it's a URL
+                        elif decoded_lower.startswith('http://') or decoded_lower.startswith('https://'):
+                            suspicious = True
                     
                     if suspicious:
                         self.scanner.add_finding(Finding(
