@@ -121,7 +121,7 @@ RedFlag performs analysis in 5 steps:
 
 ![Disclaimer](https://img.shields.io/badge/WARNING-Disclaimer-orange?style=for-the-badge&logo=alert&logoColor=white)
 
-This tool is for educational and security research purposes only. Use it to audit your own code or code you have permission to analyze. The authors are not responsible for any misuse of this tool.
+This tool is still very innaccurate and only meant to be a first measure before a manual check, although soon it will be good enough to check for people who don't know C++. Currently this only detects basic vulns.
 
 ---
 
