@@ -139,11 +139,31 @@ class CodeScanCog:
                         # Filter out example/documentation code for network APIs
                         if cat == 'NETWORK' and ('WinINet API' in desc or 'Raw Socket' in desc):
                             lower_ctx = ctx.lower()
+                            lower_rel_path = rel_path.lower()
+                            
                             # Skip if it's clearly example/documentation code
                             if 'example' in lower_ctx or 'demo' in lower_ctx or 'test' in lower_ctx:
                                 # Check if it's in a comment or string literal (likely documentation)
                                 if ctx.strip().startswith('//') or '/*' in ctx or '*/' in ctx or '"Example' in ctx or "'Example" in ctx:
                                     continue
+                            
+                            # Skip if file is in a library directory (common library code patterns)
+                            if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'utils', 'common', 'shared']):
+                                # Check if it's a wrapper or legitimate library code
+                                if 'wrapper' in lower_ctx or 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx:
+                                    continue
+                            
+                            # Skip if context shows it's just a struct/class definition (not actual usage)
+                            if 'Raw Socket' in desc:
+                                # Check if it's just a struct/class definition, not actual socket() call
+                                if 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx:
+                                    # Make sure it's not an actual socket() function call
+                                    if 'socket(' not in lower_ctx and 'socket\s*\(' not in lower_ctx:
+                                        continue
+                            
+                            # Skip WinINet if it's in example context
+                            if 'WinINet API' in desc and 'example' in lower_ctx:
+                                continue
 
                         self.scanner.add_finding(Finding(
                             category=cat,
