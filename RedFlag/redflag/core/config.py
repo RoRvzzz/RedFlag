@@ -77,7 +77,7 @@ PATTERNS = {
     'NETWORK': [
         (r'URLDownloadToFile', 3, 'File Download API'),
         (r'InternetOpen', 2, 'WinINet API'),
-        (r'socket', 2, 'Raw Socket'),
+        (r'\bsocket\s*\(', 2, 'Raw Socket'), # Only match socket() function calls, not variable names
         (r'curl\s+', 3, 'Curl Command'),
         (r'\bwget\s+', 3, 'Wget Command'), # Word boundary to avoid matching "rawget"
         (r'Invoke-WebRequest', 4, 'PowerShell Download'),

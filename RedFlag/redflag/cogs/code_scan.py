@@ -170,22 +170,29 @@ class CodeScanCog:
                                     continue
                             
                             # Skip if file is in a library directory (common library code patterns)
-                            if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'utils', 'common', 'shared']):
+                            if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'utils', 'common', 'shared', 'misc']):
                                 # Check if it's a wrapper or legitimate library code
                                 if 'wrapper' in lower_ctx or 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx:
                                     continue
                             
-                            # Skip if context shows it's just a struct/class definition (not actual usage)
+                            # Skip Raw Socket if it's matching variable names, not function calls
                             if 'Raw Socket' in desc:
+                                # Check if it's matching variable names like socket_wrapper, closesocket, etc.
+                                if any(x in lower_ctx for x in ['socket_wrapper', 'closesocket', 'socket_wrapper(', 'socket_wrapper{', 'socket_wrapper=']):
+                                    continue
                                 # Check if it's just a struct/class definition, not actual socket() call
                                 if 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx:
                                     # Make sure it's not an actual socket() function call
-                                    if 'socket(' not in lower_ctx and not re.search(r'socket\s*\(', lower_ctx):
+                                    if not re.search(r'\bsocket\s*\(', lower_ctx):
                                         continue
                             
-                            # Skip WinINet if it's in example context
-                            if 'WinINet API' in desc and 'example' in lower_ctx:
-                                continue
+                            # Skip WinINet if it's in error handling or library context
+                            if 'WinINet API' in desc:
+                                # Skip if it's error handling code (cerr, error, failed, etc.)
+                                if any(x in lower_ctx for x in ['cerr', 'error', 'failed', 'null', 'if (', 'return']):
+                                    # But only if it's clearly library/error handling, not actual malicious usage
+                                    if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'misc']) or 'example' in lower_ctx:
+                                        continue
 
                         self.scanner.add_finding(Finding(
                             category=cat,
