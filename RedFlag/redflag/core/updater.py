@@ -136,8 +136,22 @@ def install_update(zip_path, temp_dir, install_dir=None):
         if os.path.exists(current_redflag):
             shutil.move(current_redflag, backup_dir)
         
-        # Copy new version
+        # Copy new version - ensure all __init__.py files are preserved
         shutil.copytree(source_redflag, current_redflag)
+        
+        # Verify critical __init__.py files exist
+        critical_files = [
+            os.path.join(current_redflag, '__init__.py'),
+            os.path.join(current_redflag, 'core', '__init__.py'),
+            os.path.join(current_redflag, 'cogs', '__init__.py')
+        ]
+        for critical_file in critical_files:
+            if not os.path.exists(critical_file):
+                UI.log(f"  [yellow]Warning: Missing {os.path.relpath(critical_file, install_dir)} - creating it[/yellow]")
+                # Create empty __init__.py if missing
+                os.makedirs(os.path.dirname(critical_file), exist_ok=True)
+                with open(critical_file, 'w') as f:
+                    f.write('')
         
         # Cleanup backup if successful
         if os.path.exists(backup_dir):
