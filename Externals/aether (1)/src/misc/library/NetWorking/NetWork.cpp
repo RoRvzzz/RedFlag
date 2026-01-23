@@ -1,1 +1,0 @@
-/* man ion wanna do ts bru.*/
