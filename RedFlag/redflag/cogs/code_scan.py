@@ -169,10 +169,10 @@ class CodeScanCog:
                                 if ctx.strip().startswith('//') or '/*' in ctx or '*/' in ctx or '"Example' in ctx or "'Example" in ctx:
                                     continue
                             
-                            # Skip if file is in a library directory (common library code patterns)
-                            if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'utils', 'common', 'shared', 'misc']):
+                            # Skip if file is in a library directory or is clearly an HTTP client utility
+                            if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'utils', 'common', 'shared', 'misc', 'http_client', 'httpclient', 'network', 'net']):
                                 # Check if it's a wrapper or legitimate library code
-                                if 'wrapper' in lower_ctx or 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx:
+                                if 'wrapper' in lower_ctx or 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx or 'httpclient' in lower_ctx or 'http_client' in lower_ctx:
                                     continue
                             
                             # Skip Raw Socket if it's matching variable names, not function calls
@@ -191,8 +191,25 @@ class CodeScanCog:
                                 # Skip if it's error handling code (cerr, error, failed, etc.)
                                 if any(x in lower_ctx for x in ['cerr', 'error', 'failed', 'null', 'if (', 'return']):
                                     # But only if it's clearly library/error handling, not actual malicious usage
-                                    if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'misc']) or 'example' in lower_ctx:
+                                    if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'misc', 'http_client', 'httpclient']) or 'example' in lower_ctx:
                                         continue
+                                # Skip if it's clearly an HTTP client class/function
+                                if 'httpclient' in lower_ctx or 'http_client' in lower_ctx or 'initialize' in lower_ctx:
+                                    continue
+                        
+                        # Filter out legitimate XOR usage in compression/utility code
+                        if cat == 'CRYPTO' and 'XOR Operation' in desc:
+                            lower_ctx = ctx.lower()
+                            lower_rel_path = rel_path.lower()
+                            
+                            # Skip if it's clearly compression/utility code
+                            if any(x in lower_rel_path for x in ['compression', 'compress', 'util', 'utils', 'helper', 'utility']):
+                                # Check if context mentions compression, encoding, or basic obfuscation
+                                if any(x in lower_ctx for x in ['compression', 'compress', 'encode', 'decode', 'obfuscat', 'encrypt', 'decrypt', 'utility', 'helper']):
+                                    continue
+                            # Skip if it's in a comment explaining it's for obfuscation/compression
+                            if 'simple xor' in lower_ctx or 'basic obfuscat' in lower_ctx or 'xor encryption' in lower_ctx:
+                                continue
 
                         self.scanner.add_finding(Finding(
                             category=cat,
