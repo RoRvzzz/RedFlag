@@ -13,11 +13,13 @@ from pathlib import Path
 try:
     import discord
     from discord.ext import commands
+    from discord import app_commands
     DISCORD_AVAILABLE = True
 except ImportError:
     DISCORD_AVAILABLE = False
     discord = None
     commands = None
+    app_commands = None
 
 from .core.engine import RedFlagScanner
 from .core.utils import UI
@@ -44,11 +46,19 @@ class RedFlagBot(commands.Bot):
     async def setup_hook(self):
         """Called when bot is starting up"""
         await self.add_cog(RedFlagCog(self))
+        # Sync slash commands
+        try:
+            synced = await self.tree.sync()
+            print(f'Synced {len(synced)} slash command(s)')
+        except Exception as e:
+            print(f'Failed to sync slash commands: {e}')
     
     async def on_ready(self):
         """Called when bot is ready"""
         print(f'{self.user} has connected to Discord!')
         print(f'Bot is in {len(self.guilds)} guild(s)')
+        print(f'Prefix commands: {self.command_prefix}')
+        print(f'Slash commands: /redflag, /redflag-json, /redflag-help, /redflag-version')
     
     async def close(self):
         """Cleanup on bot shutdown"""
@@ -68,6 +78,23 @@ class RedFlagCog(commands.Cog):
     def __init__(self, bot: RedFlagBot):
         self.bot = bot
     
+    # Slash command for scanning
+    @app_commands.command(name='redflag', description='Scan a project or file for malicious indicators')
+    @app_commands.describe(path='Path to project or file to scan')
+    async def scan_slash(self, interaction: discord.Interaction, path: str):
+        """Slash command version of scan"""
+        await interaction.response.defer()
+        
+        # Scan local path
+        target_path = path.strip().strip('"').strip("'")
+        
+        if not os.path.exists(target_path):
+            await interaction.followup.send(f"❌ Path not found: `{target_path}`")
+            return
+        
+        await self._scan_path_slash(interaction, target_path)
+    
+    # Prefix command for scanning
     @commands.command(name='redflag', aliases=['rf', 'scan'])
     async def scan_command(self, ctx: commands.Context, *, target: Optional[str] = None):
         """
@@ -244,7 +271,7 @@ class RedFlagCog(commands.Cog):
             # If there are many findings, offer JSON export
             if len(scanner.findings) > 10:
                 await ctx.send(
-                    "💡 **Tip:** Use `!redflag-json` to export full results as JSON file."
+                    "💡 **Tip:** Use `/redflag-json` or `!redflag-json` to export full results as JSON file."
                 )
             
         except Exception as e:
@@ -308,45 +335,17 @@ class RedFlagCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ **Error:**\n```{str(e)}```")
     
+    # Slash command for help
+    @app_commands.command(name='redflag-help', description='Show RedFlag bot commands and usage')
+    async def help_slash(self, interaction: discord.Interaction):
+        """Slash command version of help"""
+        await interaction.response.send_message(embed=self._create_help_embed())
+    
+    # Prefix command for help
     @commands.command(name='redflag-help', aliases=['rf-help', 'redflag-commands'])
     async def help_command(self, ctx: commands.Context):
         """Show RedFlag bot commands"""
-        embed = discord.Embed(
-            title="🔴 RedFlag Discord Bot Commands",
-            description="Malware analysis tool for C++ projects",
-            color=discord.Color.red()
-        )
-        
-        embed.add_field(
-            name="`!redflag <path>` or `!scan <path>`",
-            value="Scan a project or file for malicious indicators\n"
-                  "You can also attach files to scan them directly",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="`!redflag-json <path>`",
-            value="Scan and export results as JSON file",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="`!redflag-help`",
-            value="Show this help message",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="📝 Notes",
-            value="• Attach files to your message to scan them\n"
-                  "• Results are formatted as Discord embeds\n"
-                  "• JSON export available for detailed analysis",
-            inline=False
-        )
-        
-        embed.set_footer(text="RedFlag v1.5.0 | GitHub: RoRvzzz/RedFlag")
-        
-        await ctx.send(embed=embed)
+        await ctx.send(embed=self._create_help_embed())
     
     @commands.command(name='redflag-version', aliases=['rf-version'])
     async def version_command(self, ctx: commands.Context):
