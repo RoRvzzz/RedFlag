@@ -180,7 +180,7 @@ class CodeScanCog:
                                 # Check if it's just a struct/class definition, not actual socket() call
                                 if 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx:
                                     # Make sure it's not an actual socket() function call
-                                    if 'socket(' not in lower_ctx and 'socket\s*\(' not in lower_ctx:
+                                    if 'socket(' not in lower_ctx and not re.search(r'socket\s*\(', lower_ctx):
                                         continue
                             
                             # Skip WinINet if it's in example context
