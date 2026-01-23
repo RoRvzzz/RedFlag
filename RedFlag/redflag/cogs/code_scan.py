@@ -102,6 +102,28 @@ class CodeScanCog:
                             
                             if skip_finding:
                                 continue
+                        
+                        # Decode and analyze hex-escaped strings
+                        if cat == 'OBFUSCATION' and 'Hex-Escaped String' in desc:
+                            try:
+                                # Extract the hex-escaped string
+                                str_match = re.search(r'["\']((?:\\x[0-9a-fA-F]{2})+?)["\']', ctx)
+                                if str_match:
+                                    hex_str = str_match.group(1)
+                                    # Decode \x escapes
+                                    decoded_bytes = bytes.fromhex(hex_str.replace('\\x', ''))
+                                    decoded_text = decoded_bytes.decode('utf-8', errors='ignore')
+                                    
+                                    # Check for suspicious content in decoded string
+                                    suspicious_keywords = ['powershell', 'cmd', 'iwr', 'download', 'invoke', 'start-process', 
+                                                          'http', 'https', 'exe', 'dll', 'base64', 'encoded']
+                                    if any(kw in decoded_text.lower() for kw in suspicious_keywords):
+                                        # Elevate severity and add decoded content to context
+                                        score = 8  # High severity for decoded malicious content
+                                        desc = f"Hex-Escaped String (Decoded: {decoded_text[:50]}...)"
+                                        ctx = f"Original: {ctx[:100]}... | Decoded: {decoded_text[:200]}"
+                            except Exception:
+                                pass  # If decoding fails, use original finding
 
                         # Context-aware refinement for System Commands
                         if cat == 'EXECUTION' and 'System Command' in desc:

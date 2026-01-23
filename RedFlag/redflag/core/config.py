@@ -94,6 +94,7 @@ PATTERNS = {
         (r'-enc\s+', 4, 'PowerShell Encoded Command'),
         #(r'IsDebuggerPresent', 3, 'Anti-Debugging Check'),
         (r'(char|byte|uint8_t)\s+\w+\[\]\s*=\s*\{(\s*0x[0-9a-fA-F]{2}\s*,?)+\}', 4, 'Stack String / Shellcode Array'), # Stack string detection
+        (r'["\'](?:\\x[0-9a-fA-F]{2}){20,}["\']', 4, 'Hex-Escaped String (Potential Obfuscation)'), # Detect \x escaped strings
     ]
 }
 
