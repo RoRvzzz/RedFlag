@@ -158,7 +158,7 @@ class CodeScanCog:
                                 # Already filtered in pattern, but double-check
                                 continue
                         
-                        # Filter out example/documentation code for network APIs
+                        # Context-aware filtering for network APIs (reduce severity, don't skip entirely)
                         if cat == 'NETWORK' and ('WinINet API' in desc or 'Raw Socket' in desc):
                             lower_ctx = ctx.lower()
                             lower_rel_path = rel_path.lower()
@@ -169,11 +169,14 @@ class CodeScanCog:
                                 if ctx.strip().startswith('//') or '/*' in ctx or '*/' in ctx or '"Example' in ctx or "'Example" in ctx:
                                     continue
                             
-                            # Skip if file is in a library directory or is clearly an HTTP client utility
+                            # Reduce severity (don't skip) if it's in HTTP client/library code
+                            # This way we still detect malicious use but reduce false positives
                             if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'utils', 'common', 'shared', 'misc', 'http_client', 'httpclient', 'network', 'net']):
                                 # Check if it's a wrapper or legitimate library code
                                 if 'wrapper' in lower_ctx or 'struct' in lower_ctx or 'class' in lower_ctx or 'namespace' in lower_ctx or 'httpclient' in lower_ctx or 'http_client' in lower_ctx:
-                                    continue
+                                    # Reduce score but still report (could be hiding malicious code)
+                                    score = max(1, score - 2)  # Reduce by 2, minimum 1
+                                    desc = f"{desc} (Library Code - Lower Risk)"
                             
                             # Skip Raw Socket if it's matching variable names, not function calls
                             if 'Raw Socket' in desc:
@@ -186,30 +189,43 @@ class CodeScanCog:
                                     if not re.search(r'\bsocket\s*\(', lower_ctx):
                                         continue
                             
-                            # Skip WinINet if it's in error handling or library context
+                            # Reduce severity for WinINet in error handling or library context
                             if 'WinINet API' in desc:
-                                # Skip if it's error handling code (cerr, error, failed, etc.)
+                                # Reduce score if it's error handling code (cerr, error, failed, etc.)
                                 if any(x in lower_ctx for x in ['cerr', 'error', 'failed', 'null', 'if (', 'return']):
                                     # But only if it's clearly library/error handling, not actual malicious usage
                                     if any(x in lower_rel_path for x in ['library', 'lib', 'util', 'misc', 'http_client', 'httpclient']) or 'example' in lower_ctx:
-                                        continue
-                                # Skip if it's clearly an HTTP client class/function
+                                        score = max(1, score - 1)  # Reduce by 1, minimum 1
+                                        desc = f"{desc} (Error Handling - Lower Risk)"
+                                # Reduce severity if it's clearly an HTTP client class/function
                                 if 'httpclient' in lower_ctx or 'http_client' in lower_ctx or 'initialize' in lower_ctx:
-                                    continue
+                                    score = max(1, score - 1)  # Reduce by 1, minimum 1
+                                    desc = f"{desc} (HTTP Client - Lower Risk)"
                         
-                        # Filter out legitimate XOR usage in compression/utility code
+                        # Context-aware filtering for XOR (reduce severity, don't skip entirely)
                         if cat == 'CRYPTO' and 'XOR Operation' in desc:
                             lower_ctx = ctx.lower()
                             lower_rel_path = rel_path.lower()
                             
-                            # Skip if it's clearly compression/utility code
+                            # Reduce severity (don't skip) if it's in compression/utility code
+                            # This way we still detect malicious XOR but reduce false positives
                             if any(x in lower_rel_path for x in ['compression', 'compress', 'util', 'utils', 'helper', 'utility']):
                                 # Check if context mentions compression, encoding, or basic obfuscation
                                 if any(x in lower_ctx for x in ['compression', 'compress', 'encode', 'decode', 'obfuscat', 'encrypt', 'decrypt', 'utility', 'helper']):
-                                    continue
-                            # Skip if it's in a comment explaining it's for obfuscation/compression
-                            if 'simple xor' in lower_ctx or 'basic obfuscat' in lower_ctx or 'xor encryption' in lower_ctx:
-                                continue
+                                    # Reduce score but still report (could be hiding malicious code)
+                                    score = max(1, score - 1)  # Reduce by 1, minimum 1
+                                    desc = f"{desc} (Utility Code - Lower Risk)"
+                            # Reduce severity if it's in a comment explaining it's for obfuscation/compression
+                            elif 'simple xor' in lower_ctx or 'basic obfuscat' in lower_ctx or 'xor encryption' in lower_ctx:
+                                score = max(1, score - 1)  # Reduce by 1, minimum 1
+                                desc = f"{desc} (Documented Usage - Lower Risk)"
+                            
+                            # BUT: If XOR is combined with suspicious patterns, keep high severity
+                            # Check surrounding context for suspicious combinations
+                            suspicious_indicators = ['download', 'upload', 'execute', 'payload', 'shell', 'cmd', 'powershell']
+                            if any(indicator in lower_ctx for indicator in suspicious_indicators):
+                                # Keep original score - this is suspicious even in utility code
+                                pass
 
                         self.scanner.add_finding(Finding(
                             category=cat,
