@@ -30,3 +30,8 @@ test_*
 
 # Allow test files in tests/ directory
 !tests/test_*.py
+
+# Discord Bot (Private Addon)
+discord_bot.py
+redflag/discord_bot.py
+DISCORD_BOT_README.md
