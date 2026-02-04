@@ -107,6 +107,7 @@ PATTERNS = {
         (r'curl\s+', 3, 'Curl Command'),
         (r'\bwget\s+', 3, 'Wget Command'), # Word boundary to avoid matching "rawget"
         (r'Invoke-WebRequest', 4, 'PowerShell Download'),
+        (r'\biwr\b', 4, 'PowerShell Download (Alias)'),
         (r'bitsadmin', 4, 'BITS Persistence/Download'),
     ],
     'CRYPTO': [
@@ -121,6 +122,37 @@ PATTERNS = {
         #(r'IsDebuggerPresent', 3, 'Anti-Debugging Check'),
         (r'(char|byte|uint8_t)\s+\w+\[\]\s*=\s*\{(\s*0x[0-9a-fA-F]{2}\s*,?)+\}', 4, 'Stack String / Shellcode Array'), # Stack string detection
         (r'["\'](?:\\x[0-9a-fA-F]{2}){20,}["\']', 4, 'Hex-Escaped String (Potential Obfuscation)'), # Detect \x escaped strings
+    ],
+    'MALWARE': [
+        (r'VCCLibraries_', 10, 'Luckyware Malware (VCCLibraries namespace)'),
+        (r'Fwfkuuv157wg2gjthwla0lwbo1493h7', 10, 'Luckyware Malware (Specific string)'),
+        (r'VCCHelp', 10, 'Luckyware Malware (VCCHelp struct)'),
+        (r'Rundolayyyy', 10, 'Luckyware Malware (Rundolayyyy var)'),
+        (r'0x82c469ad', 8, 'Luckyware Malware (XOR Key)'),
+        (r'0xDEADBEEF', 6, 'Suspicious Magic Value (Possibly Luckyware)'),
+        (r'patch_NtManageHotPatch64', 9, 'Luckyware Malware (Injection Hook)'),
+        (r'patch_ZwQueryVirtualMemory', 9, 'Luckyware Malware (Injection Hook)'),
+        (r'luckyware\.(co|cc)', 10, 'Luckyware Domain'),
+        (r'darkside\.cy', 10, 'Darkside/Luckyware Domain'),
+        (r'vcc-library\.uk', 10, 'Malware Domain (vcc-library)'),
+        (r'i-like\.boats', 10, 'Luckyware Domain'),
+        (r'devruntime\.cy', 10, 'Luckyware Domain'),
+        (r'zetolacs-cloud\.top', 10, 'Luckyware Domain'),
+        (r'frozi\.cc', 10, 'Luckyware Domain'),
+        (r'exo-api\.tf', 10, 'Luckyware Domain'),
+        (r'nuzzyservices\.com', 10, 'Luckyware Domain'),
+        (r'balista\.lol', 10, 'Luckyware Domain'),
+        (r'phobos\.top', 10, 'Luckyware Domain'),
+        (r'phobosransom\.com', 10, 'Luckyware Domain'),
+        (r'pee-files\.nl', 10, 'Luckyware Domain'),
+        (r'91\.92\.243\.218', 10, 'Luckyware IP'),
+        (r'dhszo\.darkside\.cy', 10, 'Luckyware Domain'),
+        (r'188\.114\.96\.11', 10, 'Luckyware IP'),
+        (r'risesmp\.net', 10, 'Luckyware Domain'),
+        (r'luckystrike\.pw', 10, 'Luckyware Domain'),
+        (r'krispykreme\.top', 10, 'Luckyware Domain'),
+        (r'vcc-redistrbutable\.help', 10, 'Luckyware Domain'),
+        (r'i-slept-with-ur\.mom', 10, 'Luckyware Domain'),
     ]
 }
 

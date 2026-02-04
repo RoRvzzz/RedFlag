@@ -13,6 +13,7 @@ from redflag.core.engine import RedFlagScanner
 from redflag.core.config import BANNER
 from redflag.core.utils import UI
 from redflag.core.updater import auto_update, get_current_version, apply_pending_update
+from redflag.core.luckyware import run_system_check
 
 def main():
     # check for and apply any pending updates from staging directory
@@ -29,6 +30,8 @@ def main():
     parser.add_argument("--json", type=str, metavar="FILE", help="Export results to JSON file")
     parser.add_argument("--review", action="store_true", help="Interactive review mode after scan")
     parser.add_argument("--verbose", action="store_true", help="Show internal errors/debug info")
+    parser.add_argument("--system-check", action="store_true", help="Run Luckyware system infection check")
+    parser.add_argument("--fix-system", action="store_true", help="Automatically attempt to fix system infections (requires Admin)")
     args = parser.parse_args()
     
     # show version and exit
@@ -36,7 +39,24 @@ def main():
         version = get_current_version()
         print(f"RedFlag v{version}")
         return
+
+    # Luckyware System Check (Auto-run stage)
+    # Run by default if explicit flag is set, OR if we are about to scan a directory interactively
+    should_run_check = args.system_check or (args.path and sys.stdout.isatty() and not args.json)
     
+    if should_run_check:
+        try:
+            target = args.path if args.path else None
+            run_system_check(target_dir=target, interactive=sys.stdout.isatty() and not args.fix_system)
+        except KeyboardInterrupt:
+            print("\nSystem check aborted.")
+            return
+        except Exception as e:
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            print(f"System check failed: {e}")
+            
     # check for updates (unless skipped)
     if not args.skip_update:
         try:

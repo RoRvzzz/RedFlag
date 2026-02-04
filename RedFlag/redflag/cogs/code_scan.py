@@ -568,19 +568,23 @@ class CodeScanCog:
         optimized XOR scanning - only analyze strings/arrays longer than 32 chars.
         Less false positives, faster scanning.
         """
-        # hex strings (e.g., 0x41, 0x42...)
-        hex_blobs = re.findall(r'(?:0x[0-9a-fA-F]{2},\s*){16,}', content)
+        # hex strings (e.g., 0x41, 0x42...) - track positions for line numbers
+        hex_blobs_with_pos = []
+        for match in re.finditer(r'(?:0x[0-9a-fA-F]{2},\s*){16,}', content):
+            hex_blobs_with_pos.append((match.group(), match.start()))
         
-        # long String literals (potential payloads)
-        # refined regex to capture content inside quotes more accurately
-        long_strs = re.findall(r'"([^"]{64,})"', content)
+        # long String literals (potential payloads) - track positions
+        long_strs_with_pos = []
+        for match in re.finditer(r'"([^"]{64,})"', content):
+            long_strs_with_pos.append((match.group(1), match.start()))
         
         candidates = []
         
-        for blob in hex_blobs:
+        for blob, pos in hex_blobs_with_pos:
             try:
                 clean = blob.replace('0x', '').replace(',', '').replace(' ', '').replace('\n', '')
-                candidates.append(binascii.unhexlify(clean))
+                line_no = content[:pos].count('\n') + 1
+                candidates.append((binascii.unhexlify(clean), line_no))
             except (binascii.Error, ValueError):
                 pass  # expected hex parsing errors
             except Exception as e:
@@ -589,7 +593,7 @@ class CodeScanCog:
                     UI.log(f"  [dim red]Error in XOR scan for {rel_path}: {type(e).__name__}[/dim red]")
                 pass
                 
-        for s in long_strs:
+        for s, pos in long_strs_with_pos:
             # skip strings that are mostly whitespace or code delimiters
             whitespace_delim_count = sum(1 for c in s if c.isspace() or c in '{;}')
             if whitespace_delim_count / len(s) > 0.3:  # more than 30% whitespace/delimiters
@@ -597,48 +601,60 @@ class CodeScanCog:
             
             # only analyze if it looks like garbage (high entropy or weird chars)
             if any(ord(c) > 127 for c in s) or calculate_entropy(s) > 3.5:
-                candidates.append(s)
+                line_no = content[:pos].count('\n') + 1
+                candidates.append((s, line_no))
             
-        for candidate in candidates:
+        for candidate, line_no in candidates:
             results = xor_brute(candidate)
             if results:
                 # we found something that decodes to text
-                # Only report if the *decoded* text looks suspicious
+                # Only report if the *decoded* text looks suspicious AND readable
                 for key, decoded_text in results:
-                    suspicious = False
-                    
-                    # more strict keyword check - must contain multiple suspicious indicators
                     decoded_lower = decoded_text.lower()
+                    
+                    # Stricter validation: decoded text must be mostly readable (not just random garbage)
+                    printable_ratio = sum(1 for c in decoded_text if c.isprintable() or c in '\n\r\t') / len(decoded_text)
+                    if printable_ratio < 0.75:  # Must be at least 75% printable
+                        continue
+                    
+                    # Must contain actual words/phrases, not just random symbols
+                    # Check for word-like patterns (letters followed by spaces/punctuation)
+                    word_pattern = re.findall(r'\b[a-zA-Z]{3,}\b', decoded_text)
+                    if len(word_pattern) < 2:  # Need at least 2 words
+                        continue
+                    
+                    suspicious = False
                     suspicious_keywords = ['http', 'cmd', 'powershell', 'exec', 'system', 'download', 'upload', 
                                           'invoke', 'iwr', 'curl', 'wget', 'base64', 'encoded', 'shell', 
                                           'process', 'inject', 'payload', 'malware', 'trojan', 'virus']
                     
-                    # count how many suspicious keywords are found
                     keyword_count = sum(1 for kw in suspicious_keywords if kw in decoded_lower)
-                    
-                    # require at least 2 suspicious keywords, or one very high-risk keyword
                     high_risk_keywords = ['powershell', 'invoke', 'download', 'upload', 'payload', 'inject']
                     has_high_risk = any(kw in decoded_lower for kw in high_risk_keywords)
                     
                     if keyword_count >= 2 or has_high_risk:
                         suspicious = True
                     
-                    # also check if it looks like a command or URL
+                    # Check if it looks like a command or URL (but only if it's actually readable)
                     if not suspicious:
-                        # check if decoded text looks like a command (starts with common command prefixes)
                         if any(decoded_lower.startswith(prefix) for prefix in ['cmd', 'powershell', 'start', 'run']):
                             suspicious = True
-                        # check if it's a URL
                         elif decoded_lower.startswith('http://') or decoded_lower.startswith('https://'):
                             suspicious = True
                     
                     if suspicious:
+                        # Show a cleaner context - extract the meaningful part
+                        # Find the first suspicious keyword and show context around it
+                        clean_context = decoded_text[:200].replace('\n', ' ').replace('\r', ' ').strip()
+                        if len(decoded_text) > 200:
+                            clean_context += "..."
+                        
                         self.scanner.add_finding(Finding(
                             category="OBFUSCATION",
                             description=f"XOR Obfuscated Content (Key: {hex(key)})",
                             file=rel_path,
-                            line=0,
-                            context=decoded_text[:100] + "...",
+                            line=line_no,
+                            context=clean_context,
                             score=5,
                             severity="HIGH"
                         ))

@@ -4,7 +4,7 @@ Setup script for RedFlag
 from setuptools import setup, find_packages
 import os
 
-# Read version from redflag/__init__.py
+# read version from redflag/__init__.py
 def get_version():
     version_file = os.path.join(os.path.dirname(__file__), 'redflag', '__init__.py')
     with open(version_file, 'r', encoding='utf-8') as f:
@@ -13,7 +13,7 @@ def get_version():
                 return line.split('=')[1].strip().strip('"').strip("'")
     return '0.0.0'
 
-# Read README if it exists
+# read readme if it exists
 readme_path = os.path.join(os.path.dirname(__file__), 'README.md')
 long_description = ""
 if os.path.exists(readme_path):

@@ -181,15 +181,27 @@ def export_to_json(scanner, output_file):
     elif "LOW" in severities: max_severity = "LOW"
     elif "INFO" in severities: max_severity = "INFO"
     
-    # Serialize findings
+    # Serialize findings (limit context length and filter INFO if too many)
     findings_data = []
+    # If we have many findings, exclude INFO to reduce file size
+    exclude_info = len(scanner.findings) > 100
+    
     for f in scanner.findings:
+        # Skip INFO findings if we have too many
+        if exclude_info and f.severity == "INFO":
+            continue
+            
+        # Truncate context to prevent huge JSON files
+        context = f.context or ""
+        if len(context) > 200:
+            context = context[:197] + "..."
+        
         finding_dict = {
             'category': f.category,
             'description': f.description,
             'file': f.file,
             'line': f.line,
-            'context': f.context,
+            'context': context,  # Truncated
             'score': f.score,
             'severity': f.severity,
             'confidence': getattr(f, 'confidence', 'MEDIUM'),
@@ -207,16 +219,28 @@ def export_to_json(scanner, output_file):
             'risk_level': max_severity,
             'total_threat_score': total_score,
             'total_findings': len(scanner.findings),
+            'exported_findings': len(findings_data),  # May be less if INFO filtered
             'findings_by_severity': {
                 'CRITICAL': len([f for f in scanner.findings if f.severity == 'CRITICAL']),
                 'HIGH': len([f for f in scanner.findings if f.severity == 'HIGH']),
                 'MEDIUM': len([f for f in scanner.findings if f.severity == 'MEDIUM']),
                 'LOW': len([f for f in scanner.findings if f.severity == 'LOW']),
                 'INFO': len([f for f in scanner.findings if f.severity == 'INFO'])
-            }
+            },
+            'note': 'INFO findings excluded from export' if exclude_info and len(findings_data) < len(scanner.findings) else None
         },
         'findings': findings_data,
-        'extracted_images': scanner.extracted_images if hasattr(scanner, 'extracted_images') else []
+        'extracted_images': [
+            {
+                'file': img.get('file', ''),
+                'line': img.get('line', 0),
+                'type': img.get('type', ''),
+                'size': img.get('size', 0),
+                'saved_path': img.get('saved_path', '')
+                # Exclude 'data' field to reduce file size
+            }
+            for img in (scanner.extracted_images if hasattr(scanner, 'extracted_images') else [])
+        ]
     }
     
     # Write to file
