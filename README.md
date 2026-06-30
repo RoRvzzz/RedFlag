@@ -1,6 +1,8 @@
 
 # RedFlag
 
+# REDFLAG IS NOW A PART OF [PASTE-CO.DE](https://paste-co.de/scanner)
+
 ![Python](https://img.shields.io/badge/Python-3.12%2B-FF0000?style=for-the-badge&logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Win%20%7C%20Linux-FF0000?style=for-the-badge&logo=windows&logoColor=white)
 ![License](https://img.shields.io/badge/License-GNU-FF0000?style=for-the-badge&logo=open-source-initiative&logoColor=white)
